@@ -2,12 +2,31 @@
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Button, Input } from "@/components/ui";
-import { Plus, Search, AlertCircle, Phone, MapPin, Package as PackageIcon } from "lucide-react";
+import { Button, Input, Modal } from "@/components/ui";
+import { 
+  Plus, 
+  Search, 
+  AlertCircle, 
+  Phone, 
+  MapPin, 
+  Package as PackageIcon, 
+  RefreshCw, 
+  LayoutGrid, 
+  List as ListIcon,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Truck,
+  RotateCcw,
+  User,
+  Calendar,
+  MoreVertical,
+  ChevronRight
+} from "lucide-react";
 
 interface Order {
   id: string;
-  status: string;
+  status: "PENDING" | "CONFIRMED" | "CANCELED" | "DELIVERED" | "RETURNED";
   clientName: string;
   clientPhone1: string;
   clientPhone2: string | null;
@@ -16,28 +35,36 @@ interface Order {
   address: string;
   notes: string | null;
   productId: string;
-  product: { name: string };
+  product: { name: string; sellingPrice: number };
   isBlacklisted?: boolean;
+  createdAt: string;
 }
 
 const statusOptions = [
-  { value: "PENDING", label: "قيد الانتظار", color: "bg-amber-100 text-amber-600 border-amber-200" },
-  { value: "CONFIRMED", label: "تم التأكيد", color: "bg-blue-100 text-blue-600 border-blue-200" },
-  { value: "CANCELED", label: "ملغي", color: "bg-red-100 text-red-600 border-red-200" },
-  { value: "DELIVERED", label: "تم التسليم", color: "bg-emerald-100 text-emerald-600 border-emerald-200" },
-  { value: "RETURNED", label: "مسترجع", color: "bg-slate-100 text-slate-600 border-slate-200" },
+  { value: "PENDING", label: "قيد الانتظار", icon: Clock, color: "bg-amber-50 text-amber-600 border-amber-100" },
+  { value: "CONFIRMED", label: "تم التأكيد", icon: CheckCircle2, color: "bg-blue-50 text-blue-600 border-blue-100" },
+  { value: "CANCELED", label: "ملغي", icon: XCircle, color: "bg-red-50 text-red-600 border-red-100" },
+  { value: "DELIVERED", label: "تم التسليم", icon: Truck, color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+  { value: "RETURNED", label: "مسترجع", icon: RotateCcw, color: "bg-slate-50 text-slate-600 border-slate-100" },
 ];
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [filter, setFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchOrders = async () => {
-    const res = await fetch("/api/orders");
-    if (res.ok) {
-      const data = await res.json();
-      setOrders(data);
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/orders");
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,96 +80,242 @@ export default function OrdersPage() {
     if (res.ok) fetchOrders();
   };
 
+  const filteredOrders = orders.filter(o => 
+    o.clientName.toLowerCase().includes(filter.toLowerCase()) || 
+    o.clientPhone1.includes(filter) ||
+    o.product.name.toLowerCase().includes(filter.toLowerCase())
+  );
+
   return (
     <DashboardLayout>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">إدارة الطلبات</h2>
-          <p className="text-slate-500">تتبع ومعالجة طلبات العملاء</p>
+          <h2 className="text-2xl font-bold text-slate-900 font-cairo">إدارة الطلبات</h2>
+          <p className="text-slate-500 text-sm">متابعة ومعالجة جميع طلبات العملاء</p>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
+        
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="بحث عن عميل..."
-              className="w-full pr-10 pl-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all text-sm"
+              placeholder="بحث باسم العميل، الهاتف، أو المنتج..."
+              className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all text-sm bg-white"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
           </div>
-          <Button className="gap-2">
-            <Plus size={18} />
-            <span className="hidden sm:inline">طلب جديد</span>
-          </Button>
+
+          <div className="flex items-center gap-2">
+            {/* Refresh Button */}
+            <Button 
+              variant="secondary" 
+              onClick={fetchOrders} 
+              className="p-2.5"
+              title="تحديث"
+            >
+              <div className={`${isLoading ? "animate-spin" : ""}`}>
+                <RefreshCw size={18} />
+              </div>
+            </Button>
+
+            {/* View Toggle */}
+            <div className="bg-white border border-slate-200 rounded-xl p-1 flex items-center shadow-sm">
+              <button 
+                onClick={() => setViewMode("list")}
+                className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+              >
+                <ListIcon size={18} />
+              </button>
+              <button 
+                onClick={() => setViewMode("grid")}
+                className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-slate-100 text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+              >
+                <LayoutGrid size={18} />
+              </button>
+            </div>
+
+            <Button onClick={() => setIsModalOpen(true)} className="gap-2 px-5">
+              <Plus size={18} />
+              <span>طلب جديد</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {orders.filter(o => o.clientName.includes(filter) || o.clientPhone1.includes(filter)).map((order) => (
-          <div key={order.id} className="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:shadow-slate-200/50 transition-all">
-            <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-bold text-slate-900">{order.clientName}</h3>
-                {order.isBlacklisted && (
-                  <span className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-full border border-red-100">
-                    <AlertCircle size={12} />
-                    قائمة سوداء
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                {statusOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => updateStatus(order.id, opt.value)}
-                    className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
-                      order.status === opt.value ? opt.color : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
+      {viewMode === "list" ? (
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-right border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">العميل</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">المنتج</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">الموقع</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">الحالة</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">التاريخ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{order.clientName}</span>
+                          {order.isBlacklisted && <AlertCircle size={14} className="text-red-500" />}
+                        </div>
+                        <span className="text-xs text-slate-500 font-mono">{order.clientPhone1}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-slate-700">{order.product.name}</span>
+                        <span className="text-[10px] text-slate-400">{order.product.sellingPrice} د.ج</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs text-slate-600">{order.state} - {order.city}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <select 
+                        value={order.status}
+                        onChange={(e) => updateStatus(order.id, e.target.value)}
+                        className={`text-[10px] font-bold rounded-lg border px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all ${
+                          statusOptions.find(s => s.value === order.status)?.color
+                        }`}
+                      >
+                        {statusOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 text-left">
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {new Date(order.createdAt).toLocaleDateString("ar-DZ")}
+                      </span>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Phone size={16} className="text-slate-400" />
-                  <span>{order.clientPhone1}</span>
-                  {order.clientPhone2 && <span className="text-slate-300">|</span>}
-                  <span>{order.clientPhone2}</span>
-                </div>
-                <div className="flex items-start gap-2 text-slate-600">
-                  <MapPin size={16} className="text-slate-400 mt-0.5" />
-                  <span>{order.state}، {order.city}، {order.address}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-slate-900 font-medium">
-                  <PackageIcon size={16} className="text-slate-400" />
-                  <span>{order.product.name}</span>
-                </div>
-                <div className="text-slate-500 mr-6">الكمية: {order.id}</div>
-              </div>
-
-              {order.notes && (
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-slate-600">
-                  <p className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">ملاحظات</p>
-                  {order.notes}
-                </div>
-              )}
-            </div>
+              </tbody>
+            </table>
           </div>
-        ))}
-        {orders.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
-            <p className="text-slate-400">لا توجد طلبات لعرضها حالياً</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredOrders.map((order) => {
+            const currentStatus = statusOptions.find(s => s.value === order.status);
+            return (
+              <div key={order.id} className="bg-white rounded-2xl border border-slate-200 p-5 hover:border-slate-300 transition-all shadow-sm flex flex-col group">
+                <div className="flex justify-between items-start mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-100 transition-colors">
+                      <User size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-slate-900">{order.clientName}</h3>
+                        {order.isBlacklisted && (
+                          <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded border border-red-100">
+                            BLACKLIST
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono">
+                        <Calendar size={10} />
+                        {new Date(order.createdAt).toLocaleDateString("ar-DZ")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-bold ${currentStatus?.color}`}>
+                    {currentStatus && <currentStatus.icon size={12} />}
+                    {currentStatus?.label}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">تواصل</div>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-xs text-slate-600 font-mono">
+                          <Phone size={12} className="text-slate-300" />
+                          {order.clientPhone1}
+                        </div>
+                        {order.clientPhone2 && (
+                          <div className="flex items-center gap-2 text-xs text-slate-600 font-mono">
+                            <Phone size={12} className="text-slate-300" />
+                            {order.clientPhone2}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">الموقع</div>
+                      <div className="flex items-start gap-2 text-xs text-slate-600 leading-relaxed">
+                        <MapPin size={12} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                        {order.state}, {order.city}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 flex flex-col justify-center border border-slate-100">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">الطلب</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <PackageIcon size={14} className="text-slate-400" />
+                      <span className="text-xs font-bold text-slate-800 line-clamp-1">{order.product.name}</span>
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-500 mr-5">{order.product.sellingPrice} د.ج</div>
+                  </div>
+                </div>
+
+                {order.notes && (
+                  <div className="mb-6 p-3 bg-amber-50/50 rounded-xl border border-amber-100 text-[11px] text-amber-700 italic">
+                    <span className="font-bold not-italic block mb-1 uppercase tracking-wider text-[9px] opacity-60">ملاحظات العميل:</span>
+                    {order.notes}
+                  </div>
+                )}
+
+                <div className="mt-auto pt-4 border-t border-slate-100 flex items-center gap-2">
+                  <div className="text-[10px] font-bold text-slate-400 ml-auto">تحديث الحالة:</div>
+                  <div className="flex gap-1">
+                    {statusOptions.slice(0, 4).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => updateStatus(order.id, opt.value)}
+                        className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                          order.status === opt.value ? opt.color : "bg-white text-slate-300 border-slate-100 hover:border-slate-200"
+                        }`}
+                        title={opt.label}
+                      >
+                        <opt.icon size={16} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {filteredOrders.length === 0 && (
+        <div className="bg-white rounded-3xl border border-dashed border-slate-200 py-32 text-center">
+          <div className="flex flex-col items-center gap-4 max-w-xs mx-auto">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+              <PackageIcon size={32} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-slate-600 font-bold">لم يتم العثور على طلبات</p>
+              <p className="text-slate-400 text-xs">جرب تغيير معايير البحث أو إضافة طلب جديد للبدء.</p>
+            </div>
+            <Button variant="secondary" onClick={() => setFilter("")} className="mt-2">مسح البحث</Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Add New Order Modal could go here... */}
     </DashboardLayout>
   );
 }
