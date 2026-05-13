@@ -4,12 +4,16 @@ import { getAuthUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const user = await getAuthUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    // ADMIN sees all stores; WORKER sees only their assigned stores
     const stores = await prisma.store.findMany({
+      where: user.role === "ADMIN" ? undefined : {
+        users: { some: { id: user.id } }
+      },
       include: {
         _count: {
           select: { products: true, orders: true }

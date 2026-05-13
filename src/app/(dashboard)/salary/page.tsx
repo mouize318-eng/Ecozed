@@ -14,7 +14,12 @@ import {
   History,
   AlertCircle,
   RefreshCw,
-  Coins
+  Coins,
+  BarChart3,
+  DollarSign,
+  XCircle,
+  RotateCcw,
+  Clock
 } from "lucide-react";
 
 interface UnpaidOrder {
@@ -36,6 +41,27 @@ interface SalaryData {
   unpaidOrders: UnpaidOrder[];
 }
 
+interface PayoutRecord {
+  id: string;
+  amount: number;
+  ordersCount: number;
+  upsellCount: number;
+  createdAt: string;
+}
+
+interface PerformanceData {
+  allTimeConfirmed: number;
+  deliveredOrders: number;
+  canceledOrders: number;
+  returnedOrders: number;
+  paidOrders: number;
+  pendingOrders: number;
+  totalUpsellQty: number;
+  totalRevenue: number;
+  totalPayouts: number;
+  payouts: PayoutRecord[];
+}
+
 interface Worker {
   id: string;
   username: string;
@@ -46,6 +72,8 @@ export default function SalaryPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
   const [salaryData, setSalaryData] = useState<SalaryData | null>(null);
+  const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
+  const [payoutHistory, setPayoutHistory] = useState<PayoutRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessingPayout, setIsProcessingPayout] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -61,8 +89,14 @@ export default function SalaryPage() {
     if (!workerId) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/salary?userId=${workerId}`);
-      if (res.ok) setSalaryData(await res.json());
+      const [salaryRes, performanceRes, historyRes] = await Promise.all([
+        fetch(`/api/salary?userId=${workerId}`),
+        fetch(`/api/salary/performance?userId=${workerId}`),
+        fetch(`/api/salary/history?userId=${workerId}`),
+      ]);
+      if (salaryRes.ok) setSalaryData(await salaryRes.json());
+      if (performanceRes.ok) setPerformanceData(await performanceRes.json());
+      if (historyRes.ok) setPayoutHistory(await historyRes.json());
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +111,8 @@ export default function SalaryPage() {
       fetchSalaryData(selectedWorkerId);
     } else {
       setSalaryData(null);
+      setPerformanceData(null);
+      setPayoutHistory([]);
     }
   }, [selectedWorkerId]);
 
@@ -181,6 +217,64 @@ export default function SalaryPage() {
                 </div>
               </div>
 
+              {/* Worker Performance Analytics */}
+              {performanceData && (
+                <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
+                  <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                    <h4 className="font-black text-slate-900 flex items-center gap-2">
+                      <BarChart3 size={18} className="text-slate-400" />
+                      {isRtl ? "أداء الموظف" : "Worker Performance"}
+                    </h4>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100">
+                        <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{isRtl ? "إجمالي التأكيدات" : "Total Confirmed"}</div>
+                        <div className="text-2xl font-black text-indigo-600 mt-1">{performanceData.allTimeConfirmed}</div>
+                      </div>
+                      <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
+                        <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{isRtl ? "تم التسليم" : "Delivered"}</div>
+                        <div className="text-2xl font-black text-emerald-600 mt-1">{performanceData.deliveredOrders}</div>
+                      </div>
+                      <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+                        <div className="text-[9px] font-black text-amber-400 uppercase tracking-widest">{isRtl ? "إجمالي الإيرادات" : "Total Revenue"}</div>
+                        <div className="text-2xl font-black text-amber-600 mt-1">{performanceData.totalRevenue.toFixed(0)} <span className="text-xs opacity-60">DA</span></div>
+                      </div>
+                      <div className="bg-purple-50 rounded-2xl p-4 border border-purple-100">
+                        <div className="text-[9px] font-black text-purple-400 uppercase tracking-widest">{isRtl ? "إجمالي الأبسل" : "Total Upsells"}</div>
+                        <div className="text-2xl font-black text-purple-600 mt-1">{performanceData.totalUpsellQty}</div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {performanceData.canceledOrders > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-500 rounded-xl text-[10px] font-black border border-red-100">
+                          <XCircle size={12} />
+                          {isRtl ? "ملغي:" : "Canceled:"} {performanceData.canceledOrders}
+                        </div>
+                      )}
+                      {performanceData.returnedOrders > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-500 rounded-xl text-[10px] font-black border border-orange-100">
+                          <RotateCcw size={12} />
+                          {isRtl ? "مسترجع:" : "Returned:"} {performanceData.returnedOrders}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-500 rounded-xl text-[10px] font-black border border-blue-100">
+                        <CheckCircle2 size={12} />
+                        {isRtl ? "مدفوع:" : "Paid:"} {performanceData.paidOrders}
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-500 rounded-xl text-[10px] font-black border border-amber-100">
+                        <Clock size={12} />
+                        {isRtl ? "قيد الانتظار:" : "Pending:"} {performanceData.pendingOrders}
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black">
+                        <DollarSign size={12} />
+                        {isRtl ? "إجمالي المدفوعات:" : "Total Paid:"} {performanceData.totalPayouts.toFixed(0)} DA
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Total Card */}
               <div className="bg-slate-900 rounded-[32px] p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/20">
                 <div className="absolute top-0 right-0 p-10 opacity-5">
@@ -192,9 +286,10 @@ export default function SalaryPage() {
                     <div className="text-5xl font-black tracking-tighter">{salaryData.total} <span className="text-xl opacity-50">DA</span></div>
                   </div>
                   <Button 
+                    variant="secondary"
                     onClick={handleProcessPayout} 
                     isLoading={isProcessingPayout}
-                    className="h-16 px-10 bg-white text-slate-900 hover:bg-slate-50 border-none text-lg font-black gap-3 rounded-2xl shadow-xl shadow-white/10"
+                    className="h-16 px-10 border-none text-lg font-black gap-3 rounded-2xl shadow-xl shadow-white/10"
                   >
                     <CheckCircle2 size={24} />
                     {isRtl ? "تأكيد الدفع" : "Process Payout"}
@@ -250,6 +345,68 @@ export default function SalaryPage() {
                   {salaryData.unpaidOrders.length === 0 && (
                     <div className="py-20 text-center text-slate-400 font-bold">
                       {isRtl ? "لا توجد طلبات جديدة حالياً" : "No new delivered orders yet"}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payout History */}
+              <div className="bg-white rounded-[32px] border border-slate-100 overflow-hidden shadow-sm">
+                <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                   <h4 className="font-black text-slate-900 flex items-center gap-2">
+                     <DollarSign size={18} className="text-slate-400" />
+                     {isRtl ? "سجل المدفوعات" : "Payout History"}
+                   </h4>
+                   {performanceData && (
+                     <span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[10px] font-black">
+                       {isRtl ? "إجمالي المدفوعات:" : "Total Paid:"} {performanceData.totalPayouts.toFixed(0)} DA
+                     </span>
+                   )}
+                </div>
+                <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                  {payoutHistory.length > 0 ? (
+                    <table className={`w-full ${isRtl ? "text-right" : "text-left"}`}>
+                      <thead className="bg-slate-50 sticky top-0 z-10">
+                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                          <th className="px-8 py-4">{isRtl ? "التاريخ" : "Date"}</th>
+                          <th className="px-8 py-4 text-center">{isRtl ? "المبلغ المدفوع" : "Amount Paid"}</th>
+                          <th className="px-8 py-4 text-center">{isRtl ? "عدد الطلبات" : "Orders"}</th>
+                          <th className="px-8 py-4 text-center">{isRtl ? "المبيعات الإضافية" : "Upsells"}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {payoutHistory.map(payout => (
+                          <tr key={payout.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-8 py-4 text-xs font-bold text-slate-500 font-mono">
+                              {new Date(payout.createdAt).toLocaleDateString(isRtl ? "ar-DZ" : "en-US")} {" "}
+                              <span className="text-slate-300">{new Date(payout.createdAt).toLocaleTimeString(isRtl ? "ar-DZ" : "en-US", { hour: "2-digit", minute: "2-digit" })}</span>
+                            </td>
+                            <td className="px-8 py-4 text-center">
+                              <span className="font-black text-slate-900">{payout.amount.toFixed(0)} <span className="text-[10px] opacity-50">DA</span></span>
+                            </td>
+                            <td className="px-8 py-4 text-center">
+                              <span className="px-2 py-1 bg-slate-100 rounded text-xs font-black">{payout.ordersCount}</span>
+                            </td>
+                            <td className="px-8 py-4 text-center">
+                              {payout.upsellCount > 0 ? (
+                                <div className="inline-flex items-center gap-1 text-emerald-600 font-black text-xs">
+                                  <TrendingUp size={12} />
+                                  +{payout.upsellCount}
+                                </div>
+                              ) : (
+                                <span className="text-slate-300">--</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="py-16 text-center text-slate-400 font-bold">
+                      <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <DollarSign size={24} className="text-slate-200" />
+                      </div>
+                      {isRtl ? "لم يتم دفع أي مبالغ بعد" : "No payouts recorded yet"}
                     </div>
                   )}
                 </div>

@@ -17,8 +17,15 @@ import {
   User as UserIcon,
   Lock,
   MoreVertical,
-  CheckCircle2
+  CheckCircle2,
+  Store,
+  Globe
 } from "lucide-react";
+
+interface StoreInfo {
+  id: string;
+  name: string;
+}
 
 interface Worker {
   id: string;
@@ -28,6 +35,7 @@ interface Worker {
   baseSalary: number;
   confirmationPrice: number;
   upsellBonus: number;
+  stores: StoreInfo[];
 }
 
 export default function UsersPage() {
@@ -42,19 +50,30 @@ export default function UsersPage() {
     username: "",
     password: "",
     permissions: ["read_orders"],
+    storeIds: [] as string[],
     baseSalary: "0",
     confirmationPrice: "0",
     upsellBonus: "0",
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [allStores, setAllStores] = useState<StoreInfo[]>([]);
+
+  useEffect(() => {
+    fetch("/api/stores").then(r => r.ok && r.json()).then(data => {
+      if (Array.isArray(data)) setAllStores(data);
+    }).catch(() => {});
+  }, []);
 
   const PERMISSION_LABELS: Record<string, string> = {
     read_orders: language === "ar" ? "عرض الطلبات" : "Read Orders",
     write_orders: language === "ar" ? "إدارة الطلبات" : "Manage Orders",
     manage_products: language === "ar" ? "إدارة المنتجات" : "Manage Products",
     view_reports: language === "ar" ? "مشاهدة التقارير" : "View Reports",
+    access_all_stores: language === "ar" ? "الوصول لجميع المتاجر" : "Access All Stores",
   };
+
+  const hasAllStoresAccess = formData.permissions.includes("access_all_stores");
 
   const fetchWorkers = async () => {
     setIsLoading(true);
@@ -79,6 +98,7 @@ export default function UsersPage() {
       username: "", 
       password: "", 
       permissions: ["read_orders"],
+      storeIds: [],
       baseSalary: "0",
       confirmationPrice: "0",
       upsellBonus: "0"
@@ -92,6 +112,7 @@ export default function UsersPage() {
       username: worker.username, 
       password: "", 
       permissions: worker.permissions,
+      storeIds: worker.stores?.map(s => s.id) || [],
       baseSalary: worker.baseSalary?.toString() || "0",
       confirmationPrice: worker.confirmationPrice?.toString() || "0",
       upsellBonus: worker.upsellBonus?.toString() || "0"
@@ -108,6 +129,7 @@ export default function UsersPage() {
     const res = await fetch(url, {
       method,
       body: JSON.stringify(formData),
+      headers: { "Content-Type": "application/json" }
     });
 
     if (res.ok) {
@@ -211,11 +233,33 @@ export default function UsersPage() {
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {worker.permissions.map((p, i) => (
-                          <span key={i} className="px-2 py-0.5 bg-slate-50 text-slate-600 text-[10px] rounded border border-slate-100 font-bold">
+                          <span key={i} className={`px-2 py-0.5 text-[10px] rounded border font-bold ${
+                            p === "access_all_stores" 
+                              ? "bg-indigo-50 text-indigo-600 border-indigo-100" 
+                              : "bg-slate-50 text-slate-600 border-slate-100"
+                          }`}>
                             {PERMISSION_LABELS[p] || p}
                           </span>
                         ))}
                       </div>
+                      {(worker.stores?.length || 0) > 0 && !worker.permissions.includes("access_all_stores") && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {worker.stores.map(s => (
+                            <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] rounded border border-blue-100 font-bold">
+                              <Store size={10} />
+                              {s.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {worker.permissions.includes("access_all_stores") && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] rounded border border-indigo-100 font-bold">
+                            <Globe size={10} />
+                            {isRtl ? "جميع المتاجر" : "All Stores"}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className={`flex gap-1 ${isRtl ? "justify-end" : "justify-start"}`}>
@@ -277,12 +321,31 @@ export default function UsersPage() {
                 <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{t.permissions}</div>
                 <div className={`flex flex-wrap gap-1.5 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
                   {worker.permissions.map((p, i) => (
-                    <div key={i} className="flex items-center gap-1 px-2 py-1 bg-slate-50 text-slate-600 text-[10px] rounded-lg border border-slate-100 font-bold">
-                      <CheckCircle2 size={10} className="text-emerald-500" />
+                    <div key={i} className={`flex items-center gap-1 px-2 py-1 text-[10px] rounded-lg border font-bold ${
+                      p === "access_all_stores" 
+                        ? "bg-indigo-50 text-indigo-600 border-indigo-100" 
+                        : "bg-slate-50 text-slate-600 border-slate-100"
+                    }`}>
+                      <CheckCircle2 size={10} className={p === "access_all_stores" ? "text-indigo-500" : "text-emerald-500"} />
                       {PERMISSION_LABELS[p] || p}
                     </div>
                   ))}
                 </div>
+                {worker.permissions.includes("access_all_stores") ? (
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-600 text-[10px] rounded-lg border border-indigo-100 font-bold">
+                    <Globe size={10} />
+                    {isRtl ? "جميع المتاجر" : "All Stores"}
+                  </div>
+                ) : (worker.stores?.length || 0) > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {worker.stores.map(s => (
+                      <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] rounded border border-blue-100 font-bold">
+                        <Store size={10} />
+                        {s.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <Button 
@@ -378,6 +441,63 @@ export default function UsersPage() {
                   </label>
                 ))}
               </div>
+            </div>
+
+            {/* Store Assignment */}
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <Store size={16} />
+                  {isRtl ? "المتاجر المسموح بها" : "Allowed Stores"}
+                </label>
+              </div>
+
+              <label className={`flex items-center gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${hasAllStoresAccess ? "bg-indigo-50 border-indigo-200" : "border-slate-100 hover:bg-slate-50"}`}>
+                <input 
+                  type="checkbox"
+                  checked={hasAllStoresAccess}
+                  onChange={(e) => {
+                    const newPerms = e.target.checked 
+                      ? [...formData.permissions.filter(p => p !== "access_all_stores"), "access_all_stores"]
+                      : formData.permissions.filter(p => p !== "access_all_stores");
+                    setFormData({ ...formData, permissions: newPerms, storeIds: [] });
+                  }}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                />
+                <div className="flex items-center gap-2">
+                  <Globe size={16} className="text-indigo-500" />
+                  <span className="text-xs font-bold text-slate-700">{PERMISSION_LABELS.access_all_stores}</span>
+                </div>
+              </label>
+
+              {!hasAllStoresAccess && (
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pl-1">
+                  {allStores.map((store) => {
+                    const isSelected = formData.storeIds.includes(store.id);
+                    return (
+                      <label key={store.id} className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-colors ${isSelected ? "bg-slate-900 text-white border-slate-900" : "border-slate-100 hover:bg-slate-50 text-slate-700"}`}>
+                        <input 
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            const newStoreIds = e.target.checked 
+                              ? [...formData.storeIds, store.id]
+                              : formData.storeIds.filter(id => id !== store.id);
+                            setFormData({ ...formData, storeIds: newStoreIds });
+                          }}
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-white focus:ring-white opacity-70"
+                        />
+                        <span className="text-xs font-bold truncate">{store.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {!hasAllStoresAccess && formData.storeIds.length > 0 && (
+                <p className="text-[10px] font-bold text-slate-400">
+                  {formData.storeIds.length} {isRtl ? "متجر (متاجر) مختارة" : "store(s) selected"}
+                </p>
+              )}
             </div>
           </div>
 

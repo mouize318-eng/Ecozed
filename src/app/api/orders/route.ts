@@ -4,6 +4,16 @@ import { getAuthUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const user = await getAuthUser();
+  
+  // Server-side diagnostics
+  console.log("[GET /api/orders] Auth check:", {
+    hasUser: !!user,
+    userId: user?.id,
+    username: user?.username,
+    role: user?.role,
+    storeIds: user?.storeIds,
+  });
+
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -14,12 +24,20 @@ export async function GET(req: NextRequest) {
   
   const userStoreIds = user.storeIds || [];
 
+  console.log("[GET /api/orders] URL params:", {
+    storeIdsParam,
+    status,
+    userStoreIds,
+  });
+
   // Filter store IDs by user permissions
   let targetStoreIds = userStoreIds;
   if (storeIdsParam && storeIdsParam !== "undefined") {
     const requestedIds = storeIdsParam.split(",");
     targetStoreIds = requestedIds.filter(id => userStoreIds.includes(id));
   }
+
+  console.log("[GET /api/orders] targetStoreIds:", targetStoreIds);
 
   try {
     const orders = await prisma.order.findMany({
@@ -55,8 +73,11 @@ export async function GET(req: NextRequest) {
       isBlacklisted: blacklistMap.has(order.clientPhone1) || (order.clientPhone2 && blacklistMap.has(order.clientPhone2))
     }));
 
+    console.log("[GET /api/orders] Returning", ordersWithBlacklist.length, "orders for", targetStoreIds.length, "store(s)");
+
     return NextResponse.json(ordersWithBlacklist);
   } catch (error) {
+    console.error("[GET /api/orders] Error:", error);
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
   }
 }

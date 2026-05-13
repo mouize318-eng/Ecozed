@@ -105,6 +105,23 @@
   "payWorker": "Pay Worker",
   "salaryTitle": "Salary & Dues",
   "salaryDesc": "Track worker performance and settle payouts",
-  "netProfit": "Net Profit"
+  "netProfit": "Net Profit",
+  "payoutHistory": "Payout History",
+  "payoutDate": "Payout Date",
+  "payoutAmount": "Amount Paid",
+  "payoutOrders": "Orders Count",
+  "payoutUpsells": "Upsells",
+  "totalPaidOut": "Total Paid",
+  "noPayouts": "No payouts recorded yet",
+  "performance": "Performance",
+  "workerPerformance": "Worker Performance",
+  "allTimeConfirmed": "Total Confirmations",
+  "totalRevenue": "Total Revenue",
+  "totalUpsells": "Total Upsells",
+  "deliveredCount": "Delivered",
+  "canceledCount": "Canceled",
+  "returnedCount": "Returned",
+  "paidOrdersCount": "Paid",
+  "pendingOrdersCount": "Pending"
 }
 

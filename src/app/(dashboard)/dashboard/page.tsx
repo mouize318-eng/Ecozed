@@ -11,7 +11,9 @@ import {
   Package,
   Zap,
   ArrowUpRight,
-  RefreshCw
+  RefreshCw,
+  RotateCcw,
+  AlertTriangle
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -22,7 +24,9 @@ export default function DashboardPage() {
     pendingCount: 0,
     productCount: 0,
     totalSales: 0,
-    totalProfit: 0
+    totalProfit: 0,
+    returnCount: 0,
+    totalReturnCost: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,6 +77,22 @@ export default function DashboardPage() {
       border: "border-emerald-100"
     },
     { 
+      label: isRtl ? "الطلبات المرتجعة" : "Returned Orders", 
+      value: stats.returnCount.toString(), 
+      icon: RotateCcw,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+      border: "border-orange-100"
+    },
+    { 
+      label: isRtl ? "تكلفة الاسترجاع" : "Return Cost", 
+      value: `${stats.totalReturnCost.toFixed(0)} ${isRtl ? "د.ج" : "DA"}`, 
+      icon: AlertTriangle,
+      color: "text-red-600",
+      bg: "bg-red-50",
+      border: "border-red-100"
+    },
+    { 
       label: t.netProfit, 
       value: `${stats.totalProfit.toFixed(0)} ${isRtl ? "د.ج" : "DA"}`, 
       icon: Zap,
@@ -97,7 +117,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         {statCards.map((stat, i) => (
           <div key={i} className={`bg-white p-8 rounded-[32px] border-2 ${stat.border} shadow-sm hover:shadow-xl transition-all group relative overflow-hidden`}>
             <div className={`absolute -right-4 -bottom-4 w-24 h-24 ${stat.bg} rounded-full opacity-50 blur-2xl group-hover:scale-150 transition-transform duration-700`} />

@@ -105,6 +105,23 @@
   "payWorker": "دفع المستحقات",
   "salaryTitle": "الرواتب والمستحقات",
   "salaryDesc": "تتبع أداء الموظفين وتسوية دفعاتهم",
-  "netProfit": "صافي الأرباح"
+  "netProfit": "صافي الأرباح",
+  "payoutHistory": "سجل المدفوعات",
+  "payoutDate": "تاريخ الدفع",
+  "payoutAmount": "المبلغ المدفوع",
+  "payoutOrders": "عدد الطلبات",
+  "payoutUpsells": "المبيعات الإضافية",
+  "totalPaidOut": "إجمالي المدفوعات",
+  "noPayouts": "لم يتم دفع أي مبالغ بعد",
+  "performance": "الأداء",
+  "workerPerformance": "أداء الموظف",
+  "allTimeConfirmed": "إجمالي التأكيدات",
+  "totalRevenue": "إجمالي الإيرادات",
+  "totalUpsells": "إجمالي الأبسل",
+  "deliveredCount": "تم التسليم",
+  "canceledCount": "ملغي",
+  "returnedCount": "مسترجع",
+  "paidOrdersCount": "مدفوع",
+  "pendingOrdersCount": "قيد الانتظار"
 }
 

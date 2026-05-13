@@ -38,12 +38,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // If user has "access_all_stores" permission, give them ALL stores
+    let storeIds = user.stores.map(s => s.id);
+    if (user.permissions?.includes("access_all_stores")) {
+      const allStores = await prisma.store.findMany({ select: { id: true } });
+      storeIds = allStores.map(s => s.id);
+      // Also update user.stores so the frontend knows about all stores
+      user.stores = allStores.map(s => ({ id: s.id, name: s.id })) as any;
+      // Re-fetch with names
+      const allStoresWithNames = await prisma.store.findMany({ select: { id: true, name: true } });
+      user.stores = allStoresWithNames;
+    }
+
     const token = signToken({
       id: user.id,
       username: user.username,
       role: user.role,
       permissions: user.permissions,
-      storeIds: user.stores.map(s => s.id)
+      storeIds
     });
 
     const response = NextResponse.json({

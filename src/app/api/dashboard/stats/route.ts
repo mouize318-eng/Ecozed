@@ -20,42 +20,62 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [orderCount, pendingCount, productCount, orders] = await Promise.all([
+    const [orderCount, pendingCount, productCount, orders, shippingConfigs] = await Promise.all([
       prisma.order.count({ where: { storeId: { in: targetStoreIds } } }),
       prisma.order.count({ where: { storeId: { in: targetStoreIds }, status: "PENDING" } }),
       prisma.product.count({ where: { storeId: { in: targetStoreIds } } }),
       prisma.order.findMany({
         where: { storeId: { in: targetStoreIds } },
         include: { product: true }
-      })
+      }),
+      prisma.shippingConfig.findMany()
     ]);
+
+    // Build a lookup map for return costs by state name
+    const returnCostMap: Record<string, number> = {};
+    shippingConfigs.forEach(c => { returnCostMap[c.stateName] = c.returnCost; });
 
     // Calculate total sales and profit only for DELIVERED orders
     // Attribution is based on createdAt as requested
     const deliveredOrders = orders.filter(o => o.status === "DELIVERED");
+    const returnedOrders = orders.filter(o => o.status === "RETURNED");
     
     const totalSales = deliveredOrders.reduce((sum, order) => {
       const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
       return sum + revenue;
     }, 0);
 
+    // Calculate total return cost from RETURNED orders (from shipping config)
+    const totalReturnCost = returnedOrders.reduce((sum, order) => {
+      const cost = returnCostMap[order.state] || 0;
+      return sum + cost;
+    }, 0);
+
     const totalProfit = deliveredOrders.reduce((sum, order) => {
       const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
       const cost = (order.product.cost * order.quantity) + order.adsCost + order.product.extraCharges;
       return sum + (revenue - cost);
-    }, 0);
+    }, 0) - totalReturnCost;
 
     // Group by date (createdAt)
-    const dailyStats: Record<string, { revenue: number, profit: number }> = {};
+    const dailyStats: Record<string, { revenue: number, profit: number, returnCost: number }> = {};
     deliveredOrders.forEach(order => {
       const date = new Date(order.createdAt).toISOString().split("T")[0];
-      if (!dailyStats[date]) dailyStats[date] = { revenue: 0, profit: 0 };
+      if (!dailyStats[date]) dailyStats[date] = { revenue: 0, profit: 0, returnCost: 0 };
       
       const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
       const cost = (order.product.cost * order.quantity) + order.adsCost + order.product.extraCharges;
       
       dailyStats[date].revenue += revenue;
       dailyStats[date].profit += (revenue - cost);
+    });
+    // Deduct return costs per date
+    returnedOrders.forEach(order => {
+      const date = new Date(order.createdAt).toISOString().split("T")[0];
+      if (!dailyStats[date]) dailyStats[date] = { revenue: 0, profit: 0, returnCost: 0 };
+      const rc = returnCostMap[order.state] || 0;
+      dailyStats[date].profit -= rc;
+      dailyStats[date].returnCost = (dailyStats[date].returnCost || 0) + rc;
     });
 
     return NextResponse.json({
@@ -64,6 +84,8 @@ export async function GET(req: NextRequest) {
       productCount,
       totalSales,
       totalProfit,
+      returnCount: returnedOrders.length,
+      totalReturnCost,
       dailyStats
     });
   } catch (error) {

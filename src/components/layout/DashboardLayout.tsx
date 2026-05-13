@@ -91,10 +91,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .then(freshStores => {
         if (!freshStores) return; // Happens if we redirected
         console.log("[DashboardLayout] Fresh stores from API:", freshStores);
-        if (Array.isArray(freshStores)) {
-          const updatedUser = { ...user, stores: freshStores };
+        if (Array.isArray(freshStores) && freshStores.length > 0) {
+          const updatedUser = { ...user, stores: freshStores.map(s => ({ id: s.id, name: s.name })) };
           setUser(updatedUser);
           console.log("[DashboardLayout] Auth store synced with", freshStores.length, "store(s)");
+        } else if (Array.isArray(freshStores) && freshStores.length === 0) {
+          console.warn("[DashboardLayout] ⚠️ Store sync returned 0 stores — NOT overwriting to prevent data loss");
         }
       })
       .catch(err => console.error("[DashboardLayout] Store sync failed:", err));

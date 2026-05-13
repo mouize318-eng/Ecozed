@@ -4,6 +4,16 @@ import { getAuthUser } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const user = await getAuthUser();
+
+  // Server-side diagnostics
+  console.log("[GET /api/products] Auth check:", {
+    hasUser: !!user,
+    userId: user?.id,
+    username: user?.username,
+    role: user?.role,
+    storeIds: user?.storeIds,
+  });
+
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -14,11 +24,18 @@ export async function GET(req: NextRequest) {
   // Guard against undefined storeIds in legacy sessions
   const userStoreIds = user.storeIds || [];
   
+  console.log("[GET /api/products] URL params:", {
+    storeIdsParam,
+    userStoreIds,
+  });
+
   let targetStoreIds = userStoreIds;
   if (storeIdsParam && storeIdsParam !== "undefined") {
     const requestedIds = storeIdsParam.split(",");
     targetStoreIds = requestedIds.filter(id => userStoreIds.includes(id));
   }
+
+  console.log("[GET /api/products] targetStoreIds:", targetStoreIds);
 
   try {
     const products = await prisma.product.findMany({
@@ -27,6 +44,7 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { createdAt: "desc" },
     });
+    console.log("[GET /api/products] Returning", products.length, "products");
     return NextResponse.json(products);
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });

@@ -80,6 +80,7 @@ export default function OrdersPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [shippingConfigs, setShippingConfigs] = useState<any[]>([]);
   
@@ -122,6 +123,16 @@ export default function OrdersPage() {
     { value: "CANCELED", label: isRtl ? "ملغي" : "Canceled", icon: XCircle, color: "bg-red-50 text-red-600 border-red-100" },
     { value: "DELIVERED", label: isRtl ? "تم التسليم" : "Delivered", icon: Truck, color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
     { value: "RETURNED", label: isRtl ? "مسترجع" : "Returned", icon: RotateCcw, color: "bg-slate-50 text-slate-600 border-slate-100" },
+  ];
+
+  const filterOptions = [
+    { value: null, label: isRtl ? "الكل" : "All", icon: null, color: "bg-slate-100 text-slate-700 border-slate-200" },
+    { value: "PENDING", label: isRtl ? "قيد الانتظار" : "Pending", icon: Clock, color: "bg-amber-50 text-amber-600 border-amber-100" },
+    { value: "NEED_CONTACT", label: isRtl ? "تحت الاتصال" : "Need Contact", icon: PhoneCall, color: "bg-purple-50 text-purple-600 border-purple-100" },
+    { value: "CONFIRMED", label: isRtl ? "قيد المعالجة" : "Processing", icon: CheckCircle2, color: "bg-blue-50 text-blue-600 border-blue-100" },
+    { value: "DELIVERED", label: isRtl ? "تم التسليم" : "Delivered", icon: Truck, color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+    { value: "RETURNED", label: isRtl ? "مسترجع" : "Returned", icon: RotateCcw, color: "bg-slate-50 text-slate-600 border-slate-100" },
+    { value: "CANCELED", label: isRtl ? "ملغي" : "Canceled", icon: XCircle, color: "bg-red-50 text-red-600 border-red-100" },
   ];
 
   const fetchOrders = async () => {
@@ -303,11 +314,17 @@ export default function OrdersPage() {
     }
   };
 
-  const filteredOrders = orders.filter(o => 
-    o.clientName.toLowerCase().includes(filter.toLowerCase()) || 
-    o.clientPhone1.includes(filter) ||
-    o.product.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filteredOrders = orders.filter(o => {
+    if (statusFilter === "NEED_CONTACT") {
+      if (!["NO_ANSWER", "BUSY", "PHONE_CLOSED"].includes(o.status)) return false;
+    } else if (statusFilter && o.status !== statusFilter) {
+      return false;
+    }
+    return !filter || 
+      o.clientName.toLowerCase().includes(filter.toLowerCase()) || 
+      o.clientPhone1.includes(filter) ||
+      o.product.name.toLowerCase().includes(filter.toLowerCase());
+  });
 
   // Helper to filter products in modal based on selected store
   const filteredProductsForModal = products.filter(p => p.storeId === formData.storeId);
@@ -362,19 +379,60 @@ export default function OrdersPage() {
         </div>
       </div>
 
+      {/* Status Filter Chips */}
+      <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+        {filterOptions.map(opt => {
+          const count = opt.value === null
+            ? orders.length
+            : opt.value === "NEED_CONTACT"
+              ? orders.filter(o => ["NO_ANSWER", "BUSY", "PHONE_CLOSED"].includes(o.status)).length
+              : orders.filter(o => o.status === opt.value).length;
+          const isActive = statusFilter === opt.value;
+          return (
+            <button
+              key={opt.value || "all"}
+              onClick={() => { setStatusFilter(opt.value); setSelectedIds([]); }}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-black transition-all whitespace-nowrap ${
+                isActive
+                  ? `${opt.color} shadow-sm scale-105`
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700"
+              }`}
+            >
+              {opt.icon && <opt.icon size={14} />}
+              {opt.label}
+              <span className={`${isRtl ? "mr-1" : "ml-1"} text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                isActive ? "bg-white/30" : "bg-slate-100 text-slate-400"
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {filteredOrders.length === 0 ? (
         <div className="bg-white rounded-[32px] border border-slate-200 border-dashed p-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-500">
           <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-200">
             <Inbox size={48} />
           </div>
-          <h3 className="text-xl font-black text-slate-900 mb-2">{t.noOrders}</h3>
+          <h3 className="text-xl font-black text-slate-900 mb-2">
+            {statusFilter || filter
+              ? (isRtl ? "لا توجد طلبات مطابقة" : "No matching orders")
+              : t.noOrders}
+          </h3>
           <p className="text-slate-500 text-sm max-w-xs mx-auto mb-8">
-            {activeStoreIds.length === 0 ? (isRtl ? "يرجى اختيار متجر لعرض الطلبات." : "Please select a store to view orders.") : t.noOrdersDesc}
+            {activeStoreIds.length === 0
+              ? (isRtl ? "يرجى اختيار متجر لعرض الطلبات." : "Please select a store to view orders.")
+              : statusFilter || filter
+                ? (isRtl ? "حاول تغيير الفلتر أو البحث" : "Try changing the filter or search")
+                : t.noOrdersDesc}
           </p>
-          <Button onClick={handleOpenAdd} className="gap-2 px-8 py-3">
-            <Plus size={20} />
-            <span>{t.addNew}</span>
-          </Button>
+          {!statusFilter && !filter && (
+            <Button onClick={handleOpenAdd} className="gap-2 px-8 py-3">
+              <Plus size={20} />
+              <span>{t.addNew}</span>
+            </Button>
+          )}
         </div>
       ) : viewMode === "list" ? (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">

@@ -21,11 +21,17 @@ export async function PUT(
       shippingType, shippingCost
     } = body;
 
+    // Fetch current order to check existing confirmedById
+    const existingOrder = await prisma.order.findUnique({
+      where: { id },
+      select: { confirmedById: true }
+    });
+
     const data: any = {};
     if (status) {
       data.status = status;
-      // If the order is being confirmed, track who confirmed it
-      if (status === "CONFIRMED") {
+      // Only set confirmedById on first confirmation, never overwrite
+      if (status === "CONFIRMED" && !existingOrder?.confirmedById) {
         data.confirmedById = user.id;
       }
     }

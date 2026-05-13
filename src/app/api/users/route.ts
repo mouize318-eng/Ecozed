@@ -20,6 +20,9 @@ export async function GET() {
         confirmationPrice: true,
         upsellBonus: true,
         createdAt: true,
+        stores: {
+          select: { id: true, name: true }
+        }
       },
       orderBy: { createdAt: "desc" },
     });
@@ -40,6 +43,7 @@ export async function POST(req: NextRequest) {
       username, 
       password, 
       permissions,
+      storeIds,
       baseSalary,
       confirmationPrice,
       upsellBonus
@@ -70,6 +74,7 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         role: "WORKER",
         permissions: permissions || [],
+        stores: storeIds?.length ? { connect: storeIds.map((id: string) => ({ id })) } : undefined,
         baseSalary: parseFloat(baseSalary) || 0,
         confirmationPrice: parseFloat(confirmationPrice) || 0,
         upsellBonus: parseFloat(upsellBonus) || 0,

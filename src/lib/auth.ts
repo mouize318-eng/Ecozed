@@ -51,14 +51,21 @@ export async function getAuthUser() {
       where: { id: payload.id },
       select: { 
         id: true,
+        permissions: true,
         stores: { select: { id: true } }
       }
     });
     
     if (!dbUser) return null;
 
-    // Override the stale JWT storeIds with the live database data
-    payload.storeIds = dbUser.stores.map(s => s.id);
+    // If user has "access_all_stores" permission, give them ALL stores in the system
+    if (dbUser.permissions?.includes("access_all_stores")) {
+      const allStores = await prisma.store.findMany({ select: { id: true } });
+      payload.storeIds = allStores.map(s => s.id);
+    } else {
+      // Override the stale JWT storeIds with the live database data
+      payload.storeIds = dbUser.stores.map(s => s.id);
+    }
   } catch (error) {
     console.error("[getAuthUser] DB verification failed:", error);
     return null;
