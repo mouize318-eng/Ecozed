@@ -22,7 +22,13 @@ export async function PUT(
     } = body;
 
     const data: any = {};
-    if (status) data.status = status;
+    if (status) {
+      data.status = status;
+      // If the order is being confirmed, track who confirmed it
+      if (status === "CONFIRMED") {
+        data.confirmedById = user.id;
+      }
+    }
     if (clientName) data.clientName = clientName;
     if (clientPhone1) data.clientPhone1 = clientPhone1;
     if (clientPhone2 !== undefined) data.clientPhone2 = clientPhone2;

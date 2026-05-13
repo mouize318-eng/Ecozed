@@ -19,7 +19,8 @@ import {
   ChevronUp,
   Check,
   Settings,
-  Store as StoreIcon
+  Store as StoreIcon,
+  Wallet
 } from "lucide-react";
 
 const DzFlag = () => (
@@ -52,6 +53,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: t.orders, href: "/orders", icon: ShoppingCart },
     { name: t.products, href: "/products", icon: Package },
     { name: t.users, href: "/users", icon: Users, adminOnly: true },
+    { name: t.salary, href: "/salary", icon: Wallet, adminOnly: true },
     { name: t.manageStores, href: "/stores", icon: StoreIcon, adminOnly: true },
     { name: t.settings, href: "/settings", icon: Settings, adminOnly: true },
   ];

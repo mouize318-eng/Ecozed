@@ -56,9 +56,14 @@ model User {
   password    String
   role        Role     @default(WORKER)
   permissions String[] // Array of permission strings
-  stores      Store[]  @relation("UserStores")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  stores            Store[]  @relation("UserStores")
+  baseSalary        Float    @default(0)
+  confirmationPrice Float    @default(0)
+  upsellBonus       Float    @default(0)
+  confirmedOrders   Order[]  @relation("ConfirmedBy")
+  payouts           Payout[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Product {
@@ -99,11 +104,14 @@ model Order {
   adsCost        Float       @default(0)
   notes          String?
   product        Product     @relation(fields: [productId], references: [id])
-  productId    String
-  store        Store       @relation(fields: [storeId], references: [id])
-  storeId      String
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  productId      String
+  store          Store       @relation(fields: [storeId], references: [id])
+  storeId        String
+  confirmedBy    User?       @relation("ConfirmedBy", fields: [confirmedById], references: [id])
+  confirmedById  String?
+  isPaidOut      Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 }
 
 model ShippingConfig {
@@ -123,4 +131,14 @@ model Blacklist {
   phone     String   @unique
   reason    String?
   createdAt DateTime @default(now())
+}
+
+model Payout {
+  id          String   @id @default(cuid())
+  workerId    String
+  worker      User     @relation(fields: [workerId], references: [id])
+  amount      Float
+  ordersCount Int
+  upsellCount Int
+  createdAt   DateTime @default(now())
 }

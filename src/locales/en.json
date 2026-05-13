@@ -97,5 +97,14 @@
   "change": "Exchange",
   "shippingType": "Delivery Type",
   "hasUpsell": "Has Upsell?",
-  "upsellQuantity": "Upsell Extra Quantity"
+  "upsellQuantity": "Upsell Extra Quantity",
+  "salary": "Salary Management",
+  "baseSalary": "Base Salary",
+  "confirmationBonus": "Confirmation Bonus",
+  "upsellBonus": "Upsell Bonus",
+  "payWorker": "Pay Worker",
+  "salaryTitle": "Salary & Dues",
+  "salaryDesc": "Track worker performance and settle payouts",
+  "netProfit": "Net Profit"
 }
+

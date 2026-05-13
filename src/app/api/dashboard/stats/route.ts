@@ -30,17 +30,41 @@ export async function GET(req: NextRequest) {
       })
     ]);
 
-    // Calculate total sales/revenue
-    const totalSales = orders.reduce((sum, order) => {
-      const revenue = order.totalPrice || (order.product.sellingPrice * order.quantity);
+    // Calculate total sales and profit only for DELIVERED orders
+    // Attribution is based on createdAt as requested
+    const deliveredOrders = orders.filter(o => o.status === "DELIVERED");
+    
+    const totalSales = deliveredOrders.reduce((sum, order) => {
+      const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
       return sum + revenue;
     }, 0);
+
+    const totalProfit = deliveredOrders.reduce((sum, order) => {
+      const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
+      const cost = (order.product.cost * order.quantity) + order.adsCost + order.product.extraCharges;
+      return sum + (revenue - cost);
+    }, 0);
+
+    // Group by date (createdAt)
+    const dailyStats: Record<string, { revenue: number, profit: number }> = {};
+    deliveredOrders.forEach(order => {
+      const date = new Date(order.createdAt).toISOString().split("T")[0];
+      if (!dailyStats[date]) dailyStats[date] = { revenue: 0, profit: 0 };
+      
+      const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
+      const cost = (order.product.cost * order.quantity) + order.adsCost + order.product.extraCharges;
+      
+      dailyStats[date].revenue += revenue;
+      dailyStats[date].profit += (revenue - cost);
+    });
 
     return NextResponse.json({
       orderCount,
       pendingCount,
       productCount,
-      totalSales
+      totalSales,
+      totalProfit,
+      dailyStats
     });
   } catch (error) {
     console.error("Dashboard stats error:", error);

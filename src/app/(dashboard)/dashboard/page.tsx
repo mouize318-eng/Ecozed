@@ -21,7 +21,8 @@ export default function DashboardPage() {
     orderCount: 0,
     pendingCount: 0,
     productCount: 0,
-    totalSales: 0
+    totalSales: 0,
+    totalProfit: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -72,12 +73,12 @@ export default function DashboardPage() {
       border: "border-emerald-100"
     },
     { 
-      label: isRtl ? "المنتجات النشطة" : "Active Products", 
-      value: stats.productCount.toString(), 
-      icon: Package,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      border: "border-purple-100"
+      label: t.netProfit, 
+      value: `${stats.totalProfit.toFixed(0)} ${isRtl ? "د.ج" : "DA"}`, 
+      icon: Zap,
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      border: "border-indigo-100"
     },
   ];
 

@@ -13,11 +13,14 @@ export async function PUT(
   }
 
   try {
-    const { username, password, permissions } = await req.json();
+    const { username, password, permissions, baseSalary, confirmationPrice, upsellBonus } = await req.json();
     const data: any = {};
     if (username) data.username = username;
     if (password) data.password = await hashPassword(password);
     if (permissions) data.permissions = permissions;
+    if (baseSalary !== undefined) data.baseSalary = parseFloat(baseSalary) || 0;
+    if (confirmationPrice !== undefined) data.confirmationPrice = parseFloat(confirmationPrice) || 0;
+    if (upsellBonus !== undefined) data.upsellBonus = parseFloat(upsellBonus) || 0;
 
     const updatedUser = await prisma.user.update({
       where: { id },

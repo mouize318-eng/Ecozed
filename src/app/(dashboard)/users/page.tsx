@@ -25,6 +25,9 @@ interface Worker {
   username: string;
   permissions: string[];
   role: string;
+  baseSalary: number;
+  confirmationPrice: number;
+  upsellBonus: number;
 }
 
 export default function UsersPage() {
@@ -35,11 +38,13 @@ export default function UsersPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [workerToDelete, setWorkerToDelete] = useState<string | null>(null);
-  
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     permissions: ["read_orders"],
+    baseSalary: "0",
+    confirmationPrice: "0",
+    upsellBonus: "0",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -70,13 +75,27 @@ export default function UsersPage() {
 
   const handleOpenAdd = () => {
     setEditingWorker(null);
-    setFormData({ username: "", password: "", permissions: ["read_orders"] });
+    setFormData({ 
+      username: "", 
+      password: "", 
+      permissions: ["read_orders"],
+      baseSalary: "0",
+      confirmationPrice: "0",
+      upsellBonus: "0"
+    });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (worker: Worker) => {
     setEditingWorker(worker);
-    setFormData({ username: worker.username, password: "", permissions: worker.permissions });
+    setFormData({ 
+      username: worker.username, 
+      password: "", 
+      permissions: worker.permissions,
+      baseSalary: worker.baseSalary?.toString() || "0",
+      confirmationPrice: worker.confirmationPrice?.toString() || "0",
+      upsellBonus: worker.upsellBonus?.toString() || "0"
+    });
     setIsModalOpen(true);
   };
 
@@ -312,9 +331,32 @@ export default function UsersPage() {
               placeholder="••••••••"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required={!editingWorker}
               minLength={8}
             />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label={language === "ar" ? "الراتب الأساسي" : "Base Salary"}
+                type="number"
+                value={formData.baseSalary}
+                onChange={(e) => setFormData({ ...formData, baseSalary: e.target.value })}
+                placeholder="0"
+              />
+              <Input
+                label={language === "ar" ? "سعر التأكيد" : "Confirmation Price"}
+                type="number"
+                value={formData.confirmationPrice}
+                onChange={(e) => setFormData({ ...formData, confirmationPrice: e.target.value })}
+                placeholder="0"
+              />
+              <Input
+                label={language === "ar" ? "بونص الأبسل" : "Upsell Bonus"}
+                type="number"
+                value={formData.upsellBonus}
+                onChange={(e) => setFormData({ ...formData, upsellBonus: e.target.value })}
+                placeholder="0"
+              />
+            </div>
             
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">{t.permissions}</label>

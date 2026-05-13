@@ -97,5 +97,14 @@
   "change": "استبدال",
   "shippingType": "نوع التوصيل",
   "hasUpsell": "هل يوجد مبيعات إضافية؟",
-  "upsellQuantity": "كمية المبيعات الإضافية"
+  "upsellQuantity": "كمية المبيعات الإضافية",
+  "salary": "إدارة الرواتب",
+  "baseSalary": "الراتب الأساسي",
+  "confirmationBonus": "عمولة التأكيد",
+  "upsellBonus": "عمولة الأبسل",
+  "payWorker": "دفع المستحقات",
+  "salaryTitle": "الرواتب والمستحقات",
+  "salaryDesc": "تتبع أداء الموظفين وتسوية دفعاتهم",
+  "netProfit": "صافي الأرباح"
 }
+

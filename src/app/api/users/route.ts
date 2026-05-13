@@ -16,6 +16,9 @@ export async function GET() {
         username: true,
         role: true,
         permissions: true,
+        baseSalary: true,
+        confirmationPrice: true,
+        upsellBonus: true,
         createdAt: true,
       },
       orderBy: { createdAt: "desc" },
@@ -33,7 +36,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { username, password, permissions } = await req.json();
+    const { 
+      username, 
+      password, 
+      permissions,
+      baseSalary,
+      confirmationPrice,
+      upsellBonus
+    } = await req.json();
 
     if (!username || !password) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -60,6 +70,9 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         role: "WORKER",
         permissions: permissions || [],
+        baseSalary: parseFloat(baseSalary) || 0,
+        confirmationPrice: parseFloat(confirmationPrice) || 0,
+        upsellBonus: parseFloat(upsellBonus) || 0,
       },
     });
 
