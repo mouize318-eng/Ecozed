@@ -17,7 +17,8 @@ export async function PUT(
     const { 
       status, clientName, clientPhone1, clientPhone2, 
       state, city, address, notes,
-      productId, quantity, adsCost, totalPrice
+      productId, quantity, adsCost, totalPrice,
+      shippingType, shippingCost
     } = body;
 
     const data: any = {};
@@ -31,8 +32,12 @@ export async function PUT(
     if (notes !== undefined) data.notes = notes;
     if (productId) data.productId = productId;
     if (quantity !== undefined) data.quantity = parseInt(quantity) || 1;
+    if (body.hasUpsell !== undefined) data.hasUpsell = body.hasUpsell;
+    if (body.upsellQuantity !== undefined) data.upsellQuantity = body.upsellQuantity ? parseInt(body.upsellQuantity) : null;
     if (adsCost !== undefined) data.adsCost = parseFloat(adsCost) || 0;
     if (totalPrice !== undefined) data.totalPrice = parseFloat(totalPrice) || 0;
+    if (shippingType) data.shippingType = shippingType;
+    if (shippingCost !== undefined) data.shippingCost = parseFloat(shippingCost) || 0;
 
     const updatedOrder = await prisma.order.update({
       where: { id },

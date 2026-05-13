@@ -51,12 +51,14 @@ interface Order {
   clientPhone2: string | null;
   state: string;
   city: string;
-  address: string;
+  address: string | null;
   notes: string | null;
   productId: string;
   storeId: string;
   quantity: number;
   totalPrice: number | null;
+  shippingType: "HOME" | "STOP_DESK";
+  shippingCost: number;
   adsCost: number;
   product: { 
     name: string; 
@@ -67,6 +69,8 @@ interface Order {
   };
   isBlacklisted?: boolean;
   createdAt: string;
+  hasUpsell?: boolean;
+  upsellQuantity?: number | null;
 }
 
 export default function OrdersPage() {
@@ -77,6 +81,7 @@ export default function OrdersPage() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [filter, setFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [shippingConfigs, setShippingConfigs] = useState<any[]>([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -97,9 +102,13 @@ export default function OrdersPage() {
     storeId: "",
     quantity: "1",
     totalPrice: "",
+    shippingType: "HOME" as "HOME" | "STOP_DESK",
+    shippingCost: 0,
     adsCost: "0",
     notes: "",
     status: "PENDING" as Order["status"],
+    hasUpsell: false,
+    upsellQuantity: "",
   });
 
   const isRtl = language === "ar";
@@ -138,6 +147,11 @@ export default function OrdersPage() {
     }
   };
 
+  const fetchShipping = async () => {
+    const res = await fetch("/api/settings/shipping");
+    if (res.ok) setShippingConfigs(await res.json());
+  };
+
   useEffect(() => {
     if (activeStoreIds.length > 0) {
       fetchOrders();
@@ -145,7 +159,18 @@ export default function OrdersPage() {
       setOrders([]);
     }
     fetchProducts();
+    fetchShipping();
   }, [activeStoreIds]);
+
+  useEffect(() => {
+    if (formData.state && shippingConfigs.length > 0) {
+      const config = shippingConfigs.find(c => c.stateName === formData.state);
+      if (config) {
+        const cost = formData.shippingType === "HOME" ? config.homeCost : config.stopDeskCost;
+        setFormData(prev => ({ ...prev, shippingCost: cost }));
+      }
+    }
+  }, [formData.state, formData.shippingType, shippingConfigs]);
 
   const handleOpenAdd = () => {
     setEditingOrder(null);
@@ -163,9 +188,13 @@ export default function OrdersPage() {
       storeId: defaultStoreId,
       quantity: "1",
       totalPrice: "",
+      shippingType: "HOME",
+      shippingCost: 0,
       adsCost: "0",
       notes: "",
       status: "PENDING",
+      hasUpsell: false,
+      upsellQuantity: "",
     });
     setIsModalOpen(true);
   };
@@ -178,14 +207,18 @@ export default function OrdersPage() {
       clientPhone2: order.clientPhone2 || "",
       state: order.state,
       city: order.city,
-      address: order.address,
+      address: order.address || "",
       productId: order.productId,
       storeId: order.storeId,
       quantity: order.quantity.toString(),
       totalPrice: order.totalPrice?.toString() || "",
+      shippingType: order.shippingType,
+      shippingCost: order.shippingCost,
       adsCost: order.adsCost.toString(),
       notes: order.notes || "",
       status: order.status,
+      hasUpsell: order.hasUpsell || false,
+      upsellQuantity: order.upsellQuantity?.toString() || "",
     });
     setIsModalOpen(true);
   };
@@ -358,14 +391,16 @@ export default function OrdersPage() {
                   <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">{t.productsTitle}</th>
                   <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.quantity}</th>
                   <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.totalPrice}</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.realProfit}</th>
+                  {user?.role === "ADMIN" && (
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.realProfit}</th>
+                  )}
                   <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">{t.status}</th>
                   <th className={`px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest ${isRtl ? "text-left" : "text-right"}`}>{t.confirm}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredOrders.map((order) => {
-                  const revenue = order.totalPrice || (order.product.sellingPrice * order.quantity);
+                  const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
                   const totalCost = (order.product.cost * order.quantity) + order.adsCost + order.product.extraCharges;
                   const realProfit = revenue - totalCost;
                   const isSelected = selectedIds.includes(order.id);
@@ -402,14 +437,16 @@ export default function OrdersPage() {
                       <td className="px-6 py-4 text-center">
                          <span className="text-sm font-black text-slate-900">{revenue.toFixed(0)} {isRtl ? "د.ج" : "DA"}</span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black border ${
-                          realProfit > 0 ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
-                        }`}>
-                          <TrendingUp size={12} className={realProfit > 0 ? "" : "rotate-180"} />
-                          {realProfit.toFixed(0)} {isRtl ? "د.ج" : "DA"}
-                        </div>
-                      </td>
+                      {user?.role === "ADMIN" && (
+                        <td className="px-6 py-4 text-center">
+                          <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black border ${
+                            realProfit > 0 ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
+                          }`}>
+                            <TrendingUp size={12} className={realProfit > 0 ? "" : "rotate-180"} />
+                            {realProfit.toFixed(0)} {isRtl ? "د.ج" : "DA"}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-4">
                         <select 
                           value={order.status}
@@ -454,12 +491,12 @@ export default function OrdersPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredOrders.map((order) => {
-            const currentStatus = statusOptions.find(s => s.value === order.status);
-            const revenue = order.totalPrice || (order.product.sellingPrice * order.quantity);
+            const storeName = user?.stores.find(s => s.id === order.storeId)?.name;
+            const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
             const totalCost = (order.product.cost * order.quantity) + order.adsCost + order.product.extraCharges;
             const realProfit = revenue - totalCost;
             const isSelected = selectedIds.includes(order.id);
-            const storeName = user?.stores.find(s => s.id === order.storeId)?.name;
+            const currentStatus = statusOptions.find(s => s.value === order.status);
 
             return (
               <div key={order.id} className={`bg-white rounded-[24px] border-2 p-6 hover:border-slate-300 transition-all shadow-sm flex flex-col group relative ${isSelected ? "border-indigo-500 shadow-indigo-100 shadow-xl" : "border-slate-200"} ${isRtl ? "text-right" : "text-left"}`}>
@@ -528,12 +565,14 @@ export default function OrdersPage() {
                     <div className="text-[10px] font-black text-indigo-600">
                       {revenue} {isRtl ? "د.ج" : "DA"} (x{order.quantity})
                     </div>
-                    <div className="mt-3 pt-3 border-t border-slate-200/50 flex items-center justify-between">
-                       <span className="text-[9px] font-black text-slate-400 uppercase">{t.profit}</span>
-                       <span className={`text-[11px] font-black ${realProfit > 0 ? "text-emerald-500" : "text-red-500"}`}>
-                        {realProfit.toFixed(0)}
-                       </span>
-                    </div>
+                    {user?.role === "ADMIN" && (
+                      <div className="mt-3 pt-3 border-t border-slate-200/50 flex items-center justify-between">
+                         <span className="text-[9px] font-black text-slate-400 uppercase">{t.profit}</span>
+                         <span className={`text-[11px] font-black ${realProfit > 0 ? "text-emerald-500" : "text-red-500"}`}>
+                          {realProfit.toFixed(0)}
+                         </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -668,14 +707,20 @@ export default function OrdersPage() {
               onChange={(e) => setFormData({ ...formData, clientPhone2: e.target.value })}
               className="h-12"
             />
-            <Input
-              label={t.state}
-              placeholder={isRtl ? "مثال: الجزائر" : "e.g. Algiers"}
-              value={formData.state}
-              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-              required
-              className="h-12"
-            />
+            <div className="flex flex-col space-y-1.5">
+              <label className="text-sm font-bold text-slate-700">{t.state}</label>
+              <select
+                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                required
+              >
+                <option value="">{isRtl ? "اختر الولاية..." : "Select State..."}</option>
+                {shippingConfigs.map(c => (
+                  <option key={c.id} value={c.stateName}>{c.stateCode} - {c.stateName}</option>
+                ))}
+              </select>
+            </div>
             <Input
               label={t.city}
               value={formData.city}
@@ -688,9 +733,39 @@ export default function OrdersPage() {
                 label={t.address}
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                required
                 className="h-12"
               />
+            </div>
+
+            {/* Shipping Type & Cost */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none block mb-2">{t.shippingType}</label>
+              <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100 h-12">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, shippingType: "HOME" })}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm ${formData.shippingType === "HOME" ? "bg-white text-slate-900 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}
+                >
+                   {t.home}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, shippingType: "STOP_DESK" })}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm ${formData.shippingType === "STOP_DESK" ? "bg-white text-slate-900 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}
+                >
+                   {t.stopDesk}
+                </button>
+              </div>
+            </div>
+            <div className="relative">
+              <Input
+                label={t.shippingCost}
+                type="number"
+                value={formData.shippingCost}
+                onChange={(e) => setFormData({ ...formData, shippingCost: parseInt(e.target.value) || 0 })}
+                className="h-12 font-black bg-indigo-50/50 border-indigo-100 focus:border-indigo-500"
+              />
+              <div className="absolute top-[38px] right-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest">{isRtl ? "د.ج" : "DA"}</div>
             </div>
             
             <div className="flex flex-col space-y-1.5">
@@ -718,6 +793,34 @@ export default function OrdersPage() {
               required
               className="h-12"
             />
+            
+            <div className="flex flex-col gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl md:col-span-2">
+              <div className="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
+                  id="hasUpsell" 
+                  checked={formData.hasUpsell} 
+                  onChange={(e) => setFormData({ ...formData, hasUpsell: e.target.checked })} 
+                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                />
+                <label htmlFor="hasUpsell" className="text-sm font-bold text-slate-700 cursor-pointer select-none">
+                  {t.hasUpsell || "Has Upsell?"}
+                </label>
+              </div>
+              
+              {formData.hasUpsell && (
+                <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                  <Input
+                    label={t.upsellQuantity || "Upsell Extra Quantity"}
+                    type="number"
+                    value={formData.upsellQuantity}
+                    onChange={(e) => setFormData({ ...formData, upsellQuantity: e.target.value })}
+                    className="h-12 bg-white"
+                  />
+                </div>
+              )}
+            </div>
+
             <Input
               label={t.totalPrice}
               type="number"

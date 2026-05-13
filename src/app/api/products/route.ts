@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
 
     // Verify user has access to this store
     if (!userStoreIds.includes(storeId)) {
+      console.error(`[POST /api/products] ❌ ERROR: 403 Forbidden. User ${user.username} does not have access to store ${storeId}.`);
+      console.error(`[POST /api/products] User's authorized stores:`, userStoreIds);
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -32,10 +32,37 @@ export function verifyToken(token: string): JWTPayload | null {
 }
 
 import { cookies } from "next/headers";
+import { prisma } from "./prisma";
 
 export async function getAuthUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
   if (!token) return null;
-  return verifyToken(token);
+  
+  const payload = verifyToken(token);
+  if (!payload) return null;
+
+  // Global Stale Session Check & Live Store Sync:
+  // Ensure the user still actually exists in the database.
+  // Also fetch their live store access list, since store permissions
+  // can change after the JWT token was issued (e.g. creating a new store).
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { 
+        id: true,
+        stores: { select: { id: true } }
+      }
+    });
+    
+    if (!dbUser) return null;
+
+    // Override the stale JWT storeIds with the live database data
+    payload.storeIds = dbUser.stores.map(s => s.id);
+  } catch (error) {
+    console.error("[getAuthUser] DB verification failed:", error);
+    return null;
+  }
+
+  return payload;
 }

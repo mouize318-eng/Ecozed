@@ -70,10 +70,11 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { 
-      clientName, clientPhone1, clientPhone2, 
-      state, city, address, 
+      clientName, clientPhone1, clientPhone2,
+      state, city, address,
       productId, quantity, notes,
-      adsCost, totalPrice, storeId
+      adsCost, totalPrice, storeId,
+      shippingType, shippingCost
     } = body;
 
     if (!clientName || !clientPhone1 || !productId || !storeId) {
@@ -107,8 +108,12 @@ export async function POST(req: NextRequest) {
         productId,
         storeId,
         quantity: parseInt(quantity) || 1,
+        hasUpsell: body.hasUpsell || false,
+        upsellQuantity: body.upsellQuantity ? parseInt(body.upsellQuantity) : null,
         totalPrice: finalTotalPrice,
-        adsCost: parseFloat(adsCost) || 0,
+        shippingType: shippingType || "HOME",
+        shippingCost: shippingCost ? parseFloat(shippingCost) : 0,
+        adsCost: adsCost ? parseFloat(adsCost) : 0,
         notes,
         status: "PENDING",
       },

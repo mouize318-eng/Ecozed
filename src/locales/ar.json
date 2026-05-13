@@ -88,5 +88,14 @@
   "createStore": "إنشاء متجر جديد",
   "deleteStoreWarning": "هل أنت متأكد من حذف هذا المتجر؟ سيؤدي ذلك إلى حذف جميع البيانات المتعلقة به.",
   "storeDescription": "وصف المتجر",
-  "storeWebsite": "موقع المتجر"
+  "storeWebsite": "موقع المتجر",
+  "shipping": "الشحن",
+  "home": "المنزل",
+  "stopDesk": "مكتب التوصيل",
+  "shippingCost": "تكلفة الشحن",
+  "return": "الاسترجاع",
+  "change": "استبدال",
+  "shippingType": "نوع التوصيل",
+  "hasUpsell": "هل يوجد مبيعات إضافية؟",
+  "upsellQuantity": "كمية المبيعات الإضافية"
 }

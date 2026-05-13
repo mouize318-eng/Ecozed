@@ -42,7 +42,7 @@ const UsFlag = () => (
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
   const { language, setLanguage, t } = useLanguage();
   const [isLangOpen, setIsLangOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -68,6 +68,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [language]);
+
+  // Live store sync — fixes stale localStorage store data after create/delete
+  useEffect(() => {
+    if (!user) return;
+    console.log("[DashboardLayout] Syncing stores for user:", user.username);
+    console.log("[DashboardLayout] Persisted stores:", user.stores);
+
+    fetch("/api/stores")
+      .then(async (res) => {
+        if (res.status === 401) {
+          console.warn("[DashboardLayout] 🔴 Unauthorized detected! Redirecting to login...");
+          await fetch("/api/auth/logout", { method: "POST" });
+          logout();
+          router.push("/login");
+          return null;
+        }
+        return res.json();
+      })
+      .then(freshStores => {
+        if (!freshStores) return; // Happens if we redirected
+        console.log("[DashboardLayout] Fresh stores from API:", freshStores);
+        if (Array.isArray(freshStores)) {
+          const updatedUser = { ...user, stores: freshStores };
+          setUser(updatedUser);
+          console.log("[DashboardLayout] Auth store synced with", freshStores.length, "store(s)");
+        }
+      })
+      .catch(err => console.error("[DashboardLayout] Store sync failed:", err));
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });

@@ -88,5 +88,14 @@
   "createStore": "Create New Store",
   "deleteStoreWarning": "Are you sure you want to delete this store? All associated data will be lost.",
   "storeDescription": "Store Description",
-  "storeWebsite": "Store Website"
+  "storeWebsite": "Store Website",
+  "shipping": "Shipping",
+  "home": "Home Delivery",
+  "stopDesk": "Stop Desk",
+  "shippingCost": "Shipping Cost",
+  "return": "Return",
+  "change": "Exchange",
+  "shippingType": "Delivery Type",
+  "hasUpsell": "Has Upsell?",
+  "upsellQuantity": "Upsell Extra Quantity"
 }

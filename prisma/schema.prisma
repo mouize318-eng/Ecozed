@@ -33,6 +33,11 @@ enum OrderStatus {
   PHONE_CLOSED
 }
 
+enum ShippingType {
+  HOME
+  STOP_DESK
+}
+
 model Store {
   id          String    @id @default(cuid())
   name        String
@@ -77,25 +82,41 @@ model Product {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  status       OrderStatus @default(PENDING)
+  id           String       @id @default(cuid())
+  status       OrderStatus  @default(PENDING)
+  shippingType ShippingType @default(HOME)
+  shippingCost Float        @default(0)
   clientName   String
   clientPhone1 String
   clientPhone2 String?
   state        String
   city         String
-  address      String
-  quantity     Int         @default(1)
-  totalPrice   Float?      // Custom price for this specific order
-  adsCost      Float       @default(0)
-  notes        String?
-  product      Product     @relation(fields: [productId], references: [id])
+  address      String?
+  quantity       Int         @default(1)
+  hasUpsell      Boolean     @default(false)
+  upsellQuantity Int?
+  totalPrice     Float?      // Custom price for this specific order
+  adsCost        Float       @default(0)
+  notes          String?
+  product        Product     @relation(fields: [productId], references: [id])
   productId    String
   store        Store       @relation(fields: [storeId], references: [id])
   storeId      String
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 }
+
+model ShippingConfig {
+  id           String   @id @default(cuid())
+  stateName    String   @unique
+  stateCode    String   @unique
+  homeCost     Float    @default(0)
+  stopDeskCost Float    @default(0)
+  returnCost   Float    @default(0)
+  changeCost   Float    @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
 
 model Blacklist {
   id        String   @id @default(cuid())

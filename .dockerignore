@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env
+.env.local
+.env.development
+.env.production
+README.md
+Dockerfile
+.dockerignore
+npm-debug.log
+package-lock.json
+prisma/migrations
+scripts/seed*.js

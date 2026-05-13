@@ -25,7 +25,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await getAuthUser();
+  
+  // Diagnostic logging
+  console.log("[POST /api/stores] Auth check:", {
+    hasUser: !!user,
+    userId: user?.id,
+    username: user?.username,
+    role: user?.role,
+    storeIds: user?.storeIds,
+  });
+
   if (!user || user.role !== "ADMIN") {
+    console.log("[POST /api/stores] REJECTED — user:", user?.username, "role:", user?.role);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -35,7 +46,11 @@ export async function POST(req: NextRequest) {
 
     // Verify user still exists in DB (might be a stale session after reset)
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    
     if (!dbUser) {
+      console.error(`[POST /api/stores] ❌ ERROR: User ID '${user.id}' from JWT token was NOT FOUND in the database.`);
+      console.error(`[POST /api/stores] ℹ️ This means your browser has an old session from before the database was reset/migrated.`);
+      console.error(`[POST /api/stores] 🛠️ FIX: Please click 'Logout' in the dashboard and log back in.`);
       return NextResponse.json({ error: "User session is invalid. Please log out and back in." }, { status: 401 });
     }
 
