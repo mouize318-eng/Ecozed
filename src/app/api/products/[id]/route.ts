@@ -14,7 +14,7 @@ export async function PUT(
 
   try {
     const body = await req.json();
-    const { name, weight, cost, sellingPrice, status, adsCost, extraCharges, imageUrl, description, landingPageUrl } = body;
+    const { name, weight, cost, sellingPrice, status, adsCost, extraCharges, imageUrl, description, landingPageUrl, offers } = body;
 
     const data: any = {};
     if (name) data.name = name;
@@ -27,6 +27,7 @@ export async function PUT(
     if (description !== undefined) data.description = description;
     if (landingPageUrl !== undefined) data.landingPageUrl = landingPageUrl;
     if (status) data.status = status;
+    if (offers !== undefined) data.offers = offers;
 
     const updatedProduct = await prisma.product.update({
       where: { id },

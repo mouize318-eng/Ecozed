@@ -10,9 +10,10 @@ const algerianStates = [
   "Illizi", "Bordj Bou Arreridj", "Boumerdès", "El Tarf", "Tindouf", "Tissemsilt", "El Oued", 
   "Khenchela", "Souk Ahras", "Tipaza", "Mila", "Aïn Defla", "Naâma", "Aïn Témouchent", "Ghardaïa", 
   "Relizane", "El M'Ghair", "El Menia", "Ouled Djellal", "Bordj Baji Mokhtar", "Béni Abbès", 
-  "Timimoun", "Touggourt", "Djanet", "In Salah", "In Guezzam", "Aflou", "El Abiodh Sidi Cheikh", 
-  "El Aricha", "El Kantara", "Barika", "Bousaâda", "Bir El Ater", "Ksar El Boukhari", 
-  "Ksar Chellala", "Aïn Oussera", "Messaad"
+  "Timimoun", "Touggourt", "Djanet", "In Salah",   "In Guezzam",
+  // "Aflou", "El Abiodh Sidi Cheikh", 
+  // "El Aricha", "El Kantara", "Barika", "Bousaâda", "Bir El Ater", "Ksar El Boukhari", 
+  // "Ksar Chellala", "Aïn Oussera", "Messaad"
 ];
 
 async function seedShipping() {

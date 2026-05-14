@@ -46,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, setUser, logout } = useAuthStore();
   const { language, setLanguage, t } = useLanguage();
   const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
@@ -71,35 +72,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [language]);
 
-  // Live store sync — fixes stale localStorage store data after create/delete
+  // Auth check on mount — verify httpOnly cookie, redirect to login if invalid
   useEffect(() => {
-    if (!user) return;
-    console.log("[DashboardLayout] Syncing stores for user:", user.username);
-    console.log("[DashboardLayout] Persisted stores:", user.stores);
-
-    fetch("/api/stores")
-      .then(async (res) => {
-        if (res.status === 401) {
-          console.warn("[DashboardLayout] 🔴 Unauthorized detected! Redirecting to login...");
-          await fetch("/api/auth/logout", { method: "POST" });
+    async function checkAuth() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) {
           logout();
           router.push("/login");
-          return null;
+          return;
         }
-        return res.json();
-      })
-      .then(freshStores => {
-        if (!freshStores) return; // Happens if we redirected
-        console.log("[DashboardLayout] Fresh stores from API:", freshStores);
-        if (Array.isArray(freshStores) && freshStores.length > 0) {
-          const updatedUser = { ...user, stores: freshStores.map(s => ({ id: s.id, name: s.name })) };
-          setUser(updatedUser);
-          console.log("[DashboardLayout] Auth store synced with", freshStores.length, "store(s)");
-        } else if (Array.isArray(freshStores) && freshStores.length === 0) {
-          console.warn("[DashboardLayout] ⚠️ Store sync returned 0 stores — NOT overwriting to prevent data loss");
-        }
-      })
-      .catch(err => console.error("[DashboardLayout] Store sync failed:", err));
+        const data = await res.json();
+        setUser(data.user);
+      } catch {
+        logout();
+        router.push("/login");
+      } finally {
+        setIsChecking(false);
+      }
+    }
+    checkAuth();
   }, []);
 
   const handleLogout = async () => {
@@ -109,6 +101,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const isRtl = language === "ar";
+
+  if (isChecking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50" dir={isRtl ? "rtl" : "ltr"}>
+        <div className="text-center">
+          <div className="w-20 h-20 bg-slate-900 rounded-[28px] flex items-center justify-center text-white shadow-2xl shadow-slate-900/10 mx-auto mb-8">
+            <Package size={40} />
+          </div>
+          <div className="flex items-center justify-center gap-1.5 mb-4">
+            <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+          <p className="text-sm font-bold text-slate-400 tracking-wider uppercase">{isRtl ? "جارٍ التحقق..." : "Checking credentials..."}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex min-h-screen bg-slate-50 ${isRtl ? "font-cairo text-right" : "text-left"}`} dir={isRtl ? "rtl" : "ltr"}>

@@ -21,8 +21,15 @@ import {
   List as ListIcon,
   RefreshCw,
   Store as StoreIcon,
-  Package as PackageIcon
+  Package as PackageIcon,
+  Tag,
+  Minus
 } from "lucide-react";
+
+interface Offer {
+  qty: number;
+  price: number;
+}
 
 interface Product {
   id: string;
@@ -37,6 +44,7 @@ interface Product {
   landingPageUrl: string | null;
   status: "DRAFT" | "TESTING" | "PRODUCTION";
   storeId: string;
+  offers?: Offer[];
 }
 
 export default function ProductsPage() {
@@ -64,6 +72,7 @@ export default function ProductsPage() {
     landingPageUrl: "",
     status: "DRAFT" as Product["status"],
     storeId: "",
+    offers: [] as Offer[],
   });
 
   const [bulkData, setBulkData] = useState({
@@ -109,6 +118,7 @@ export default function ProductsPage() {
       landingPageUrl: "",
       status: "DRAFT",
       storeId: activeStoreIds.length === 1 ? activeStoreIds[0] : (user?.stores?.[0]?.id || ""),
+      offers: [],
     });
     setIsModalOpen(true);
   };
@@ -127,6 +137,7 @@ export default function ProductsPage() {
       landingPageUrl: product.landingPageUrl || "",
       status: product.status,
       storeId: product.storeId,
+      offers: product.offers || [],
     });
     setIsModalOpen(true);
   };
@@ -637,6 +648,79 @@ export default function ProductsPage() {
               onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
               className="h-12"
             />
+
+            {/* Offers */}
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <Tag size={14} />
+                    {t.offers}
+                  </h4>
+                  <p className="text-[10px] font-bold text-slate-400 mt-0.5">{t.offersDesc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, offers: [...formData.offers, { qty: 0, price: 0 }] })}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all text-xs font-black"
+                >
+                  <Plus size={14} />
+                  {t.addOffer}
+                </button>
+              </div>
+              {formData.offers.length > 0 && (
+                <div className="space-y-2">
+                  {formData.offers.map((offer, index) => (
+                    <div key={index} className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="flex-1 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder={t.offerQty}
+                          value={offer.qty || ""}
+                          onChange={(e) => {
+                            const newOffers = [...formData.offers];
+                            newOffers[index] = { ...newOffers[index], qty: parseInt(e.target.value) || 0 };
+                            setFormData({ ...formData, offers: newOffers });
+                          }}
+                          className="w-20 h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                        />
+                        <span className="text-xs font-bold text-slate-400">x</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder={t.offerPrice}
+                          value={offer.price || ""}
+                          onChange={(e) => {
+                            const newOffers = [...formData.offers];
+                            newOffers[index] = { ...newOffers[index], price: parseInt(e.target.value) || 0 };
+                            setFormData({ ...formData, offers: newOffers });
+                          }}
+                          className="flex-1 h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold text-left focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                        />
+                        <span className="text-[10px] font-black text-slate-400 w-8">{isRtl ? "د.ج" : "DA"}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newOffers = formData.offers.filter((_, i) => i !== index);
+                          setFormData({ ...formData, offers: newOffers });
+                        }}
+                        className="p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                      >
+                        <Minus size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {formData.offers.length === 0 && (
+                <p className="text-[11px] font-bold text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  {isRtl ? "لم يتم إضافة أي عروض بعد" : "No offers added yet"}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-inner">

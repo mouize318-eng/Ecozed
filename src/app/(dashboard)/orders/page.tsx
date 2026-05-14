@@ -33,7 +33,9 @@ import {
   PhoneOff,
   Smartphone,
   PhoneCall,
-  Store as StoreIcon
+  Store as StoreIcon,
+  UserCheck,
+  Shield
 } from "lucide-react";
 
 interface Product {
@@ -71,6 +73,7 @@ interface Order {
   createdAt: string;
   hasUpsell?: boolean;
   upsellQuantity?: number | null;
+  confirmedBy?: { id: string; username: string } | null;
 }
 
 export default function OrdersPage() {
@@ -480,6 +483,12 @@ export default function OrdersPage() {
                           <div className="flex items-center gap-1.5">
                              <div className="px-1 py-0.5 rounded bg-slate-50 border border-slate-100 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">{storeName}</div>
                              <span className="text-[10px] text-slate-400 font-bold font-mono">{order.clientPhone1}</span>
+                              {order.confirmedBy && (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-700 leading-none shadow-sm">
+                                  <UserCheck size={10} />
+                                  {order.confirmedBy.username}
+                                </span>
+                              )}
                           </div>
                         </div>
                       </td>
@@ -575,15 +584,15 @@ export default function OrdersPage() {
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-inner">
                       <User size={24} />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-black text-slate-900 tracking-tight">{order.clientName}</h3>
-                        {order.isBlacklisted && (
-                          <span className="px-2 py-0.5 bg-red-500 text-white text-[9px] font-black rounded-lg shadow-lg shadow-red-200">
-                            BL
-                          </span>
-                        )}
-                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-900 tracking-tight">{order.clientName}</h3>
+                          {order.isBlacklisted && (
+                            <span className="px-2 py-0.5 bg-red-500 text-white text-[9px] font-black rounded-lg shadow-lg shadow-red-200">
+                              BL
+                            </span>
+                          )}
+                        </div>
                       <div className={`flex items-center gap-1.5 text-[10px] text-slate-400 font-bold ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
                         <Calendar size={10} />
                         {new Date(order.createdAt).toLocaleDateString(isRtl ? "ar-DZ" : "en-US")}
@@ -629,6 +638,18 @@ export default function OrdersPage() {
                          <span className={`text-[11px] font-black ${realProfit > 0 ? "text-emerald-500" : "text-red-500"}`}>
                           {realProfit.toFixed(0)}
                          </span>
+                      </div>
+                    )}
+                    {order.confirmedBy && (
+                      <div className="mt-3 pt-3 border-t border-emerald-200/50 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase tracking-[0.1em]">
+                          <UserCheck size={11} />
+                          {isRtl ? "تم التأكيد بواسطة" : "Confirmed by"}
+                        </span>
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-black shadow-sm border border-emerald-200">
+                          <Shield size={10} />
+                          {order.confirmedBy.username}
+                        </span>
                       </div>
                     )}
                   </div>

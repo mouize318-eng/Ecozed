@@ -45,8 +45,9 @@ model Store {
   websiteUrl  String?
   products    Product[]
   orders      Order[]
-  users       User[]    @relation("UserStores")
-  createdAt   DateTime  @default(now())
+  users       User[]         @relation("UserStores")
+  integrations Integration[]
+  createdAt   DateTime       @default(now())
   updatedAt   DateTime  @updatedAt
 }
 
@@ -79,6 +80,7 @@ model Product {
   landingPageUrl String?
   status         ProductStatus @default(DRAFT)
   assets       Json?         // { images: [], videos: [], landingPage: "", articles: [] }
+  offers       Json?         // [{ qty: 2, price: 2500 }, { qty: 3, price: 3500 }]
   orders       Order[]
   store        Store         @relation(fields: [storeId], references: [id])
   storeId      String
@@ -141,4 +143,16 @@ model Payout {
   ordersCount Int
   upsellCount Int
   createdAt   DateTime @default(now())
+}
+
+model Integration {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id])
+  websiteType  String   // e.g. "woocommerce"
+  apiKey       String
+  endpointUuid String   @unique
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

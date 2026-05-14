@@ -24,10 +24,18 @@ import {
   Save,
   CheckSquare,
   Square,
-  X
+  X,
+  Link,
+  Copy,
+  Key,
+  Power,
+  PowerOff,
+  ExternalLink,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
-type SettingsSection = "general" | "backup" | "notifications" | "security" | "shipping";
+type SettingsSection = "general" | "backup" | "notifications" | "security" | "shipping" | "integrations";
 
 interface ShippingConfig {
   id: string;
@@ -64,9 +72,22 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchIntegrations = async () => {
+    const res = await fetch("/api/settings/integrations");
+    if (res.ok) setIntegrations(await res.json());
+  };
+
+  const fetchStores = async () => {
+    const res = await fetch("/api/stores");
+    if (res.ok) setStores(await res.json());
+  };
+
   useEffect(() => {
     if (activeSection === "shipping") {
       fetchShipping();
+    } else if (activeSection === "integrations") {
+      fetchIntegrations();
+      fetchStores();
     }
   }, [activeSection]);
 
@@ -143,6 +164,17 @@ export default function SettingsPage() {
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [bulkValues, setBulkValues] = useState({ homeCost: 0, stopDeskCost: 0, returnCost: 0, changeCost: 0 });
 
+  // Integrations state
+  const [integrations, setIntegrations] = useState<any[]>([]);
+  const [stores, setStores] = useState<any[]>([]);
+  const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
+  const [editingIntegration, setEditingIntegration] = useState<any | null>(null);
+  const [integrationForm, setIntegrationForm] = useState({ storeId: "", apiKey: "", useGeneratedKey: true });
+  const [copiedUuid, setCopiedUuid] = useState<string | null>(null);
+  const [copiedApiKey, setCopiedApiKey] = useState<string | null>(null);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [deleteIntegrationId, setDeleteIntegrationId] = useState<string | null>(null);
+
   const handleUpdateShipping = async (config: ShippingConfig) => {
     try {
       const res = await fetch("/api/settings/shipping", {
@@ -158,6 +190,87 @@ export default function SettingsPage() {
     } catch (error) {
       setStatus({ type: "error", message: "Update failed" });
     }
+  };
+
+  const handleOpenAddIntegration = () => {
+    setEditingIntegration(null);
+    setIntegrationForm({ storeId: "", apiKey: "", useGeneratedKey: true });
+    setIsIntegrationModalOpen(true);
+  };
+
+  const handleOpenEditIntegration = (integration: any) => {
+    setEditingIntegration(integration);
+    setIntegrationForm({ storeId: integration.storeId, apiKey: "", useGeneratedKey: true });
+    setIsIntegrationModalOpen(true);
+  };
+
+  const handleSaveIntegration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const apiKey = integrationForm.useGeneratedKey
+        ? Array.from({ length: 3 }, () => Math.random().toString(36).substring(2)).join("")
+        : integrationForm.apiKey;
+
+      const body = { storeId: integrationForm.storeId, apiKey };
+      const url = editingIntegration
+        ? `/api/settings/integrations/${editingIntegration.id}`
+        : "/api/settings/integrations";
+      const method = editingIntegration ? "PUT" : "POST";
+
+      const res = await fetch(url, { method, body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
+      if (res.ok) {
+        setIsIntegrationModalOpen(false);
+        fetchIntegrations();
+        setStatus({ type: "success", message: editingIntegration
+          ? (isRtl ? "تم تحديث الربط بنجاح!" : "Integration updated!")
+          : (isRtl ? "تم إنشاء الربط بنجاح!" : "Integration created!") });
+        setTimeout(() => setStatus(null), 3000);
+      } else {
+        const err = await res.json();
+        setStatus({ type: "error", message: err.error || "Failed to save" });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleIntegrationStatus = async (integration: any) => {
+    const res = await fetch(`/api/settings/integrations/${integration.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ isActive: !integration.isActive }),
+      headers: { "Content-Type": "application/json" },
+    });
+    if (res.ok) fetchIntegrations();
+  };
+
+  const handleDeleteIntegration = async () => {
+    if (!deleteIntegrationId) return;
+    setIsLoading(true);
+    const res = await fetch(`/api/settings/integrations/${deleteIntegrationId}`, { method: "DELETE" });
+    if (res.ok) {
+      setDeleteIntegrationId(null);
+      fetchIntegrations();
+      setStatus({ type: "success", message: isRtl ? "تم الحذف بنجاح" : "Deleted successfully" });
+      setTimeout(() => setStatus(null), 3000);
+    }
+    setIsLoading(false);
+  };
+
+  const handleCopyEndpoint = async (uuid: string) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/woocommerce/${uuid}`);
+      setCopiedUuid(uuid);
+      setTimeout(() => setCopiedUuid(null), 2000);
+    } catch {}
+  };
+
+  const handleCopyApiKey = async (id: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(key);
+      setCopiedApiKey(id);
+      setTimeout(() => setCopiedApiKey(null), 2000);
+    } catch {}
   };
 
   const handleBulkUpdateShipping = async () => {
@@ -186,6 +299,7 @@ export default function SettingsPage() {
   const menuItems = [
     { id: "general", label: isRtl ? "عام" : "General", icon: Globe },
     { id: "shipping", label: t.shipping, icon: Truck },
+    { id: "integrations", label: t.integrations, icon: Link },
     { id: "backup", label: t.backupTitle, icon: Database },
     { id: "notifications", label: isRtl ? "الإشعارات" : "Notifications", icon: Bell },
     { id: "security", label: isRtl ? "الأمان" : "Security", icon: Lock },
@@ -430,6 +544,218 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeSection === "integrations" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="bg-white rounded-[40px] border border-slate-200 p-8 shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-1">{t.integrations}</h3>
+                    <p className="text-slate-500 text-sm">{t.integrationsDesc}</p>
+                  </div>
+                  <Button onClick={handleOpenAddIntegration} className="gap-2 h-11">
+                    <Link size={18} />
+                    <span>{t.addIntegration}</span>
+                  </Button>
+                </div>
+
+                {integrations.length === 0 ? (
+                  <div className="bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 py-20 text-center">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm">
+                      <Link size={32} />
+                    </div>
+                    <p className="text-lg font-black text-slate-400 mb-1">{t.noIntegrations}</p>
+                    <p className="text-sm text-slate-400">{t.noIntegrationsDesc}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {integrations.map((integration) => (
+                      <div key={integration.id} className={`bg-slate-50 rounded-[24px] p-6 border transition-all ${integration.isActive ? "border-emerald-100" : "border-slate-200 opacity-70"}`}>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${integration.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-200 text-slate-400"}`}>
+                              <ExternalLink size={22} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-black text-slate-900">{integration.store?.name}</h4>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${integration.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
+                                  {integration.isActive ? t.integrationActive : t.integrationInactive}
+                                </span>
+                              </div>
+                              <p className="text-xs font-bold text-slate-400 mt-0.5">{integration.websiteType}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleIntegrationStatus(integration)}
+                              className={`p-2.5 rounded-xl transition-all ${integration.isActive ? "bg-white text-emerald-600 hover:bg-emerald-50" : "bg-white text-slate-400 hover:bg-slate-100"}`}
+                              title={t.toggleStatus}
+                            >
+                              {integration.isActive ? <Power size={18} /> : <PowerOff size={18} />}
+                            </button>
+                            <button
+                              onClick={() => handleOpenEditIntegration(integration)}
+                              className="p-2.5 bg-white rounded-xl text-slate-400 hover:text-slate-900 transition-all"
+                              title={t.edit}
+                            >
+                              <Save size={16} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteIntegrationId(integration.id)}
+                              className="p-2.5 bg-white rounded-xl text-red-400 hover:text-red-600 transition-all"
+                              title={t.delete}
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 pt-5 border-t border-slate-200/50 space-y-4">
+                          {/* Webhook Endpoint URL */}
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{t.endpointUrl}</label>
+                            <div className="flex items-center gap-2">
+                              <code className="flex-1 block truncate bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-slate-700 shadow-sm">
+                                {`${typeof window !== "undefined" ? window.location.origin : ""}/api/webhooks/woocommerce/${integration.endpointUuid}`}
+                              </code>
+                              <button
+                                onClick={() => handleCopyEndpoint(integration.endpointUuid)}
+                                className="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm"
+                              >
+                                {copiedUuid === integration.endpointUuid ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* API Key */}
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block flex items-center gap-1.5">
+                              <Key size={11} />
+                              {t.apiKey}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <code className="flex-1 block truncate bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-slate-700 shadow-sm">
+                                {revealedKey === integration.id ? integration.apiKey : `${integration.apiKey.substring(0, 8)}...${integration.apiKey.slice(-4)}`}
+                              </code>
+                              <button
+                                onClick={() => setRevealedKey(revealedKey === integration.id ? null : integration.id)}
+                                className="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm"
+                                title={revealedKey === integration.id ? (isRtl ? "إخفاء" : "Hide") : (isRtl ? "إظهار" : "Show")}
+                              >
+                                {revealedKey === integration.id ? <EyeOff size={15} /> : <Eye size={15} />}
+                              </button>
+                              <button
+                                onClick={() => handleCopyApiKey(integration.id, integration.apiKey)}
+                                className="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm"
+                                title={t.copyEndpoint}
+                              >
+                                {copiedApiKey === integration.id ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Delete Confirmation */}
+              <Modal isOpen={!!deleteIntegrationId} onClose={() => setDeleteIntegrationId(null)} title={t.confirm}>
+                <div className="text-center py-6 space-y-6">
+                  <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <AlertTriangle size={40} />
+                  </div>
+                  <p className="text-slate-600">{t.deleteIntegrationWarning}</p>
+                  <div className="flex justify-center gap-3">
+                    <Button variant="secondary" onClick={() => setDeleteIntegrationId(null)} className="h-12 px-8">{t.cancel}</Button>
+                    <Button variant="danger" onClick={handleDeleteIntegration} isLoading={isLoading} className="h-12 px-8">{t.delete}</Button>
+                  </div>
+                </div>
+              </Modal>
+
+              {/* Add/Edit Integration Modal */}
+              <Modal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} title={editingIntegration ? t.editIntegration : t.addIntegration}>
+                <form onSubmit={handleSaveIntegration} className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700">{t.websiteType}</label>
+                      <select
+                        defaultValue="woocommerce"
+                        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                      >
+                        <option value="woocommerce">WooCommerce</option>
+                        <option value="shopify" disabled>{isRtl ? "Shopify (قريباً)" : "Shopify (Coming Soon)"}</option>
+                        <option value="funnel" disabled>{isRtl ? "Funnel (قريباً)" : "Funnel (Coming Soon)"}</option>
+                        <option value="other" disabled>{isRtl ? "أخرى (قريباً)" : "Other (Coming Soon)"}</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700">{t.selectStore}</label>
+                      <select
+                        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                        value={integrationForm.storeId}
+                        onChange={(e) => setIntegrationForm({ ...integrationForm, storeId: e.target.value })}
+                        required
+                        disabled={!!editingIntegration}
+                      >
+                        <option value="">{isRtl ? "اختر متجراً..." : "Select a store..."}</option>
+                        {stores.map((s: any) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">{t.apiKey}</label>
+                      <div className="flex items-center gap-3 mb-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={integrationForm.useGeneratedKey}
+                            onChange={() => setIntegrationForm({ ...integrationForm, useGeneratedKey: true, apiKey: "" })}
+                            className="w-4 h-4 text-slate-900 focus:ring-slate-900"
+                          />
+                          <span className="text-xs font-bold text-slate-600">{t.generateApiKey}</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={!integrationForm.useGeneratedKey}
+                            onChange={() => setIntegrationForm({ ...integrationForm, useGeneratedKey: false })}
+                            className="w-4 h-4 text-slate-900 focus:ring-slate-900"
+                          />
+                          <span className="text-xs font-bold text-slate-600">{t.useCustomKey}</span>
+                        </label>
+                      </div>
+                      {!integrationForm.useGeneratedKey && (
+                        <input
+                          type="text"
+                          className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-mono font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                          placeholder="sk_..."
+                          value={integrationForm.apiKey}
+                          onChange={(e) => setIntegrationForm({ ...integrationForm, apiKey: e.target.value })}
+                          required
+                        />
+                      )}
+                      {integrationForm.useGeneratedKey && (
+                        <p className="text-[10px] font-bold text-slate-400">
+                          {isRtl ? "سيتم توليد مفتاح عشوائي آمن تلقائياً" : "A secure random key will be generated automatically"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <Button type="button" variant="secondary" onClick={() => setIsIntegrationModalOpen(false)} className="h-12 px-8">{t.cancel}</Button>
+                    <Button type="submit" isLoading={isLoading} className="h-12 px-8">{t.save}</Button>
+                  </div>
+                </form>
+              </Modal>
             </div>
           )}
 

@@ -56,6 +56,9 @@ export async function GET(req: NextRequest) {
             adsCost: true,
             extraCharges: true
           }
+        },
+        confirmedBy: {
+          select: { id: true, username: true }
         }
       },
       orderBy: { createdAt: "desc" },
@@ -73,7 +76,25 @@ export async function GET(req: NextRequest) {
       isBlacklisted: blacklistMap.has(order.clientPhone1) || (order.clientPhone2 && blacklistMap.has(order.clientPhone2))
     }));
 
-    console.log("[GET /api/orders] Returning", ordersWithBlacklist.length, "orders for", targetStoreIds.length, "store(s)");
+    console.log("[GET /api/orders] Returning", ordersWithBlacklist.length, "orders for", targetStoreIds.length, "store(s):");
+    for (const o of ordersWithBlacklist) {
+      console.log("[GET /api/orders]  - Order:", JSON.stringify({
+        id: o.id,
+        status: o.status,
+        clientName: o.clientName,
+        clientPhone1: o.clientPhone1,
+        productName: o.product.name,
+        totalPrice: o.totalPrice,
+        quantity: o.quantity,
+        shippingCost: o.shippingCost,
+        storeId: o.storeId,
+        shippingType: o.shippingType,
+        confirmedBy: o.confirmedBy,
+        isBlacklisted: o.isBlacklisted,
+        createdAt: o.createdAt,
+        notes: o.notes,
+      }));
+    }
 
     return NextResponse.json(ordersWithBlacklist);
   } catch (error) {
@@ -98,7 +119,11 @@ export async function POST(req: NextRequest) {
       shippingType, shippingCost
     } = body;
 
+    console.log("[POST /api/orders] Create order by:", { userId: user.id, username: user.username });
+    console.log("[POST /api/orders] Payload:", { clientName, clientPhone1, productId, quantity, totalPrice, storeId, shippingCost });
+
     if (!clientName || !clientPhone1 || !productId || !storeId) {
+      console.warn("[POST /api/orders] Missing required fields:", { clientName: !!clientName, clientPhone1: !!clientPhone1, productId: !!productId, storeId: !!storeId });
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
@@ -106,6 +131,7 @@ export async function POST(req: NextRequest) {
 
     // Verify user has access to this store
     if (!userStoreIds.includes(storeId)) {
+      console.warn("[POST /api/orders] Forbidden: user", user.id, "doesn't have access to store", storeId, "- user stores:", userStoreIds);
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -115,6 +141,7 @@ export async function POST(req: NextRequest) {
       const product = await prisma.product.findUnique({ where: { id: productId } });
       if (product) {
         finalTotalPrice = product.sellingPrice * (parseInt(quantity) || 1);
+        console.log("[POST /api/orders] Auto-calculated totalPrice:", { productSellingPrice: product.sellingPrice, quantity, finalTotalPrice });
       }
     }
 
@@ -140,9 +167,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    console.log("[POST /api/orders] Created order:", { orderId: order.id, status: order.status, clientName: order.clientName, totalPrice: order.totalPrice });
     return NextResponse.json(order);
   } catch (error) {
-    console.error("Order creation error:", error);
+    console.error("[POST /api/orders] Error:", error);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
   }
 }

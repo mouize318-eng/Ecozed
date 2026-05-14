@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const { 
       name, weight, cost, sellingPrice, 
       status, adsCost, extraCharges, 
-      imageUrl, storeId, description, landingPageUrl 
+      imageUrl, storeId, description, landingPageUrl, offers
     } = body;
 
     if (!name || cost === undefined || sellingPrice === undefined || !storeId) {
@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
         status: status || "DRAFT",
         description: description || null,
         landingPageUrl: landingPageUrl || null,
+        offers: offers || undefined,
         storeId,
       },
     });
