@@ -46,9 +46,10 @@ model Store {
   products    Product[]
   orders      Order[]
   users       User[]         @relation("UserStores")
-  integrations Integration[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime  @updatedAt
+  integrations     Integration[]
+  ecotrackConfigs  EcotrackConfig[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model User {
@@ -109,11 +110,16 @@ model Order {
   productId      String
   store          Store       @relation(fields: [storeId], references: [id])
   storeId        String
-  confirmedBy    User?       @relation("ConfirmedBy", fields: [confirmedById], references: [id])
-  confirmedById  String?
-  isPaidOut      Boolean     @default(false)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  confirmedBy      User?       @relation("ConfirmedBy", fields: [confirmedById], references: [id])
+  confirmedById    String?
+  ecotrackRef        String?     // Tracking reference from Ecotrack
+  sentToEcotrack     Boolean     @default(false)
+  sentToEcotrackAt   DateTime?
+  ecotrackValidated  Boolean     @default(false)
+  ecotrackValidatedAt DateTime?
+  isPaidOut        Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 model ShippingConfig {
@@ -155,4 +161,19 @@ model Integration {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model EcotrackConfig {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  company   String   @default("ecotrack") // e.g. "ecotrack"
+  prefix    String   // e.g. "world-express"
+  apiKey    String
+  baseUrl   String   // e.g. "https://world-express.ecotrack.dz"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, company])
 }

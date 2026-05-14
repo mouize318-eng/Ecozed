@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button, Modal } from "@/components/ui";
 import { useLanguage } from "@/lib/translations";
-import { 
-  Download, 
-  Upload, 
-  Database, 
-  ShieldCheck, 
+import {
+  Download,
+  Upload,
+  Database,
+  ShieldCheck,
   AlertTriangle,
   RefreshCcw,
   CheckCircle2,
@@ -32,10 +32,14 @@ import {
   PowerOff,
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  Shield,
+  Package,
+  MapPin,
+  Printer
 } from "lucide-react";
 
-type SettingsSection = "general" | "backup" | "notifications" | "security" | "shipping" | "integrations";
+type SettingsSection = "general" | "backup" | "notifications" | "security" | "shipping" | "integrations" | "shipping-provider";
 
 interface ShippingConfig {
   id: string;
@@ -82,11 +86,19 @@ export default function SettingsPage() {
     if (res.ok) setStores(await res.json());
   };
 
+  const fetchShippingProvider = async () => {
+    const res = await fetch("/api/settings/shipping-provider");
+    if (res.ok) setShippingProviders(await res.json());
+  };
+
   useEffect(() => {
     if (activeSection === "shipping") {
       fetchShipping();
     } else if (activeSection === "integrations") {
       fetchIntegrations();
+      fetchStores();
+    } else if (activeSection === "shipping-provider") {
+      fetchShippingProvider();
       fetchStores();
     }
   }, [activeSection]);
@@ -174,6 +186,15 @@ export default function SettingsPage() {
   const [copiedApiKey, setCopiedApiKey] = useState<string | null>(null);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [deleteIntegrationId, setDeleteIntegrationId] = useState<string | null>(null);
+
+  // Shipping provider state
+  const [shippingProviders, setShippingProviders] = useState<any[]>([]);
+  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
+  const [editingShippingProvider, setEditingShippingProvider] = useState<any | null>(null);
+  const [deleteShippingId, setDeleteShippingId] = useState<string | null>(null);
+  const [shippingForm, setShippingForm] = useState({ storeId: "", prefix: "", apiKey: "", company: "ecotrack", baseUrl: "" });
+  const [showShippingApiKey, setShowShippingApiKey] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   const handleUpdateShipping = async (config: ShippingConfig) => {
     try {
@@ -273,6 +294,76 @@ export default function SettingsPage() {
     } catch {}
   };
 
+  // Shipping provider handlers
+  const handleOpenAddShipping = () => {
+    setEditingShippingProvider(null);
+    setShippingForm({ storeId: "", prefix: "", apiKey: "", company: "ecotrack", baseUrl: "" });
+    setShowShippingApiKey(false);
+    setTestResult(null);
+    setIsShippingModalOpen(true);
+  };
+
+  const handleOpenEditShipping = (provider: any) => {
+    setEditingShippingProvider(provider);
+    setShippingForm({
+      storeId: provider.storeId,
+      prefix: provider.prefix,
+      apiKey: provider.apiKey,
+      company: provider.company,
+      baseUrl: provider.baseUrl,
+    });
+    setShowShippingApiKey(false);
+    setTestResult(null);
+    setIsShippingModalOpen(true);
+  };
+
+  const handleSaveShippingProvider = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const body = {
+        storeId: shippingForm.storeId,
+        company: shippingForm.company,
+        prefix: shippingForm.prefix,
+        apiKey: shippingForm.apiKey,
+        baseUrl: shippingForm.baseUrl || `https://${shippingForm.prefix}.ecotrack.dz`,
+      };
+
+      const url = editingShippingProvider
+        ? `/api/settings/shipping-provider/${editingShippingProvider.id}`
+        : "/api/settings/shipping-provider";
+      const method = editingShippingProvider ? "PUT" : "POST";
+
+      const res = await fetch(url, { method, body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
+      if (res.ok) {
+        setIsShippingModalOpen(false);
+        fetchShippingProvider();
+        setStatus({ type: "success", message: editingShippingProvider
+          ? (isRtl ? "تم تحديث شركة الشحن!" : "Shipping provider updated!")
+          : (isRtl ? "تم إضافة شركة الشحن!" : "Shipping provider added!") });
+        setTimeout(() => setStatus(null), 3000);
+      } else {
+        const err = await res.json();
+        setStatus({ type: "error", message: err.error || "Failed to save" });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteShippingProvider = async () => {
+    if (!deleteShippingId) return;
+    setIsLoading(true);
+    const res = await fetch(`/api/settings/shipping-provider/${deleteShippingId}`, { method: "DELETE" });
+    if (res.ok) {
+      setDeleteShippingId(null);
+      fetchShippingProvider();
+      setStatus({ type: "success", message: isRtl ? "تم الحذف بنجاح" : "Deleted successfully" });
+      setTimeout(() => setStatus(null), 3000);
+    }
+    setIsLoading(false);
+  };
+
   const handleBulkUpdateShipping = async () => {
     setIsLoading(true);
     try {
@@ -300,6 +391,7 @@ export default function SettingsPage() {
     { id: "general", label: isRtl ? "عام" : "General", icon: Globe },
     { id: "shipping", label: t.shipping, icon: Truck },
     { id: "integrations", label: t.integrations, icon: Link },
+    { id: "shipping-provider", label: t.shippingProvider, icon: Package },
     { id: "backup", label: t.backupTitle, icon: Database },
     { id: "notifications", label: isRtl ? "الإشعارات" : "Notifications", icon: Bell },
     { id: "security", label: isRtl ? "الأمان" : "Security", icon: Lock },
@@ -752,6 +844,187 @@ export default function SettingsPage() {
 
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                     <Button type="button" variant="secondary" onClick={() => setIsIntegrationModalOpen(false)} className="h-12 px-8">{t.cancel}</Button>
+                    <Button type="submit" isLoading={isLoading} className="h-12 px-8">{t.save}</Button>
+                  </div>
+                </form>
+              </Modal>
+            </div>
+          )}
+
+          {activeSection === "shipping-provider" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="bg-white rounded-[40px] border border-slate-200 p-8 shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-1">{t.shippingProvider}</h3>
+                    <p className="text-slate-500 text-sm">{t.shippingProviderDesc}</p>
+                  </div>
+                  <Button onClick={handleOpenAddShipping} className="gap-2 h-11">
+                    <Package size={18} />
+                    <span>{t.addShippingProvider}</span>
+                  </Button>
+                </div>
+
+                {shippingProviders.length === 0 ? (
+                  <div className="bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 py-20 text-center">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm">
+                      <Truck size={32} />
+                    </div>
+                    <p className="text-lg font-black text-slate-400 mb-1">{t.noShippingProvider}</p>
+                    <p className="text-sm text-slate-400">{t.noShippingProviderDesc}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {shippingProviders.map((provider) => (
+                      <div key={provider.id} className={`bg-slate-50 rounded-[24px] p-6 border transition-all ${provider.isActive ? "border-emerald-100" : "border-slate-200 opacity-70"}`}>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${provider.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-200 text-slate-400"}`}>
+                              <Package size={22} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-black text-slate-900">{provider.store?.name}</h4>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${provider.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
+                                  {provider.isActive ? t.shippingProviderActive : t.shippingProviderInactive}
+                                </span>
+                              </div>
+                              <p className="text-xs font-bold text-slate-400 mt-0.5">{provider.prefix}.ecotrack.dz</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleOpenEditShipping(provider)}
+                              className="p-2.5 bg-white rounded-xl text-slate-400 hover:text-slate-900 transition-all"
+                              title={t.edit}
+                            >
+                              <Save size={16} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteShippingId(provider.id)}
+                              className="p-2.5 bg-white rounded-xl text-red-400 hover:text-red-600 transition-all"
+                              title={t.delete}
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 pt-5 border-t border-slate-200/50 space-y-3">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                            <MapPin size={12} className="text-slate-400" />
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-1">{t.baseUrl}:</span>
+                            <code className="font-mono text-slate-800">{provider.baseUrl}</code>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                            <Key size={12} className="text-slate-400" />
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-1">{t.shippingApiKey}:</span>
+                            <code className="font-mono text-slate-800">{provider.apiKey.substring(0, 12)}...</code>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Delete Confirmation */}
+              <Modal isOpen={!!deleteShippingId} onClose={() => setDeleteShippingId(null)} title={t.confirm}>
+                <div className="text-center py-6 space-y-6">
+                  <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <AlertTriangle size={40} />
+                  </div>
+                  <p className="text-slate-600">{t.deleteShippingWarning}</p>
+                  <div className="flex justify-center gap-3">
+                    <Button variant="secondary" onClick={() => setDeleteShippingId(null)} className="h-12 px-8">{t.cancel}</Button>
+                    <Button variant="danger" onClick={handleDeleteShippingProvider} isLoading={isLoading} className="h-12 px-8">{t.delete}</Button>
+                  </div>
+                </div>
+              </Modal>
+
+              {/* Add/Edit Modal */}
+              <Modal isOpen={isShippingModalOpen} onClose={() => setIsShippingModalOpen(false)} title={editingShippingProvider ? t.editShippingProvider : t.addShippingProvider}>
+                <form onSubmit={handleSaveShippingProvider} className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700">{t.company}</label>
+                      <select
+                        defaultValue="ecotrack"
+                        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                      >
+                        <option value="ecotrack">Ecotrack</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700">{t.selectStore}</label>
+                      <select
+                        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                        value={shippingForm.storeId}
+                        onChange={(e) => setShippingForm({ ...shippingForm, storeId: e.target.value })}
+                        required
+                        disabled={!!editingShippingProvider}
+                      >
+                        <option value="">{isRtl ? "اختر متجراً..." : "Select a store..."}</option>
+                        {stores.map((s: any) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700">{t.prefix}</label>
+                      <div className="flex">
+                        <input
+                          type="text"
+                          className="flex-1 h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-mono font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                          placeholder="world-express"
+                          value={shippingForm.prefix}
+                          onChange={(e) => setShippingForm({ ...shippingForm, prefix: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-400">{t.prefixDesc}</p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700">{t.shippingApiKey}</label>
+                      <div className="relative">
+                        <input
+                          type={showShippingApiKey ? "text" : "password"}
+                          className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-mono font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                          placeholder="API Key"
+                          value={shippingForm.apiKey}
+                          onChange={(e) => setShippingForm({ ...shippingForm, apiKey: e.target.value })}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowShippingApiKey(!showShippingApiKey)}
+                          className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "left-3" : "right-3"} p-1.5 text-slate-400 hover:text-slate-600 transition-all`}
+                        >
+                          {showShippingApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700">{t.baseUrl}</label>
+                      <input
+                        type="text"
+                        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-mono font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                        placeholder="https://world-express.ecotrack.dz"
+                        value={shippingForm.baseUrl}
+                        onChange={(e) => setShippingForm({ ...shippingForm, baseUrl: e.target.value })}
+                      />
+                      <p className="text-[10px] font-bold text-slate-400">
+                        {isRtl ? "اتركه فارغاً لاستخدام الرابط الافتراضي" : "Leave empty to use default URL from prefix"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <Button type="button" variant="secondary" onClick={() => setIsShippingModalOpen(false)} className="h-12 px-8">{t.cancel}</Button>
                     <Button type="submit" isLoading={isLoading} className="h-12 px-8">{t.save}</Button>
                   </div>
                 </form>

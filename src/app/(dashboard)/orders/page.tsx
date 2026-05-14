@@ -35,7 +35,8 @@ import {
   PhoneCall,
   Store as StoreIcon,
   UserCheck,
-  Shield
+  Shield,
+  Printer
 } from "lucide-react";
 
 interface Product {
@@ -74,6 +75,11 @@ interface Order {
   hasUpsell?: boolean;
   upsellQuantity?: number | null;
   confirmedBy?: { id: string; username: string } | null;
+  ecotrackRef?: string | null;
+  sentToEcotrack?: boolean;
+  sentToEcotrackAt?: string | null;
+  ecotrackValidated?: boolean;
+  ecotrackValidatedAt?: string | null;
 }
 
 export default function OrdersPage() {
@@ -289,6 +295,144 @@ export default function OrdersPage() {
     setIsLoading(false);
   };
 
+  const handleValidateShipping = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/orders/shipping/validate", {
+        method: "POST",
+        body: JSON.stringify({ ids: selectedIds }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        setSelectedIds([]);
+        fetchOrders();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to dispatch");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendToShipping = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/orders/shipping/send", {
+        method: "POST",
+        body: JSON.stringify({ ids: selectedIds }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        setSelectedIds([]);
+        fetchOrders();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to send to shipping");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrintLabel = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/orders/shipping/label?orderId=${orderId}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const disposition = res.headers.get("Content-Disposition") || "";
+        const filename = disposition.match(/filename="(.+)"/)?.[1] || "label.pdf";
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to get label");
+      }
+    } catch {
+      alert("Failed to download label");
+    }
+  };
+
+  const handleSyncTracking = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/orders/shipping/sync-tracking", {
+        method: "POST",
+        body: JSON.stringify({}),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.updated > 0) {
+          fetchOrders();
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBulkSyncTracking = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/orders/shipping/sync-tracking", {
+        method: "POST",
+        body: JSON.stringify({ ids: selectedIds }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.updated > 0) {
+          setSelectedIds([]);
+          fetchOrders();
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrintLabels = async () => {
+    const trackedIds = selectedIds.filter(id => {
+      const order = orders.find(o => o.id === id);
+      return order?.ecotrackRef;
+    });
+    if (trackedIds.length === 0) return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/orders/shipping/labels", {
+        method: "POST",
+        body: JSON.stringify({ ids: trackedIds }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `labels-${trackedIds.length}-orders.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to get combined labels");
+      }
+    } catch {
+      alert("Failed to download labels");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!orderToDelete) return;
     setIsLoading(true);
@@ -353,10 +497,14 @@ export default function OrdersPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={fetchOrders} className="h-11 w-11 p-0">
+            <Button variant="secondary" onClick={fetchOrders} className="h-11 w-11 p-0" title={t.refresh}>
               <div className={`${isLoading ? "animate-spin" : ""}`}>
                 <RefreshCw size={18} />
               </div>
+            </Button>
+            <Button variant="secondary" onClick={handleSyncTracking} className="h-11 gap-2 px-4" title={t.syncTrackingDesc}>
+              <RefreshCw size={16} />
+              <span className="text-xs font-bold hidden sm:inline">{t.syncTracking}</span>
             </Button>
 
             <div className="bg-white border border-slate-200 rounded-xl p-1 flex items-center shadow-sm h-11">
@@ -529,6 +677,24 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className={`flex gap-1 ${isRtl ? "justify-end" : "justify-start"}`}>
+                          {order.ecotrackRef && (
+                            <>
+                              <button 
+                                onClick={() => handlePrintLabel(order.id)}
+                                className="p-2.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
+                                title={t.printLabel}
+                              >
+                                <Printer size={18} />
+                              </button>
+                              <span className={`px-2 py-1 rounded-lg text-[8px] font-black leading-none ${
+                                order.ecotrackValidated 
+                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-200" 
+                                  : "bg-amber-100 text-amber-700 border border-amber-200"
+                              }`}>
+                                {order.ecotrackValidated ? t.validated : t.notValidated}
+                              </span>
+                            </>
+                          )}
                           <button 
                             onClick={() => handleOpenEdit(order)}
                             className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-xl shadow-none hover:shadow-lg transition-all border border-transparent hover:border-slate-100"
@@ -652,6 +818,47 @@ export default function OrdersPage() {
                         </span>
                       </div>
                     )}
+                    {order.sentToEcotrack && order.ecotrackRef && (
+                      <>
+                        <div className="mt-3 pt-3 border-t border-blue-200/50 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-[0.1em]">
+                            <PackageIcon size={11} />
+                            {t.ecotrackRef}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <code className="text-[9px] font-mono font-black text-blue-800 bg-blue-100 px-2 py-1 rounded-lg border border-blue-200">
+                              {order.ecotrackRef}
+                            </code>
+                            <button
+                              onClick={() => handlePrintLabel(order.id)}
+                              className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all"
+                              title={t.printLabel}
+                            >
+                              <Printer size={12} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-slate-200/50 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">
+                            {t.shippingStatus}
+                          </span>
+                          {order.ecotrackValidated ? (
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[9px] font-black shadow-sm border border-emerald-200">
+                              <CheckCircle2 size={10} />
+                              {t.validated}
+                              {order.ecotrackValidatedAt && (
+                                <span className="opacity-60">({new Date(order.ecotrackValidatedAt).toLocaleDateString()})</span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100 text-amber-800 text-[9px] font-black shadow-sm border border-amber-200">
+                              <Clock size={10} />
+                              {t.notValidated}
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -707,6 +914,60 @@ export default function OrdersPage() {
             </div>
 
             <div className="flex items-center gap-2 pl-6 border-l border-slate-700">
+               {/* Send confirmed orders to shipping */}
+               {selectedIds.some(id => {
+                 const o = orders.find(o => o.id === id);
+                 return o?.status === "CONFIRMED" && !o.sentToEcotrack;
+               }) && (
+                 <button 
+                   onClick={handleSendToShipping}
+                   className="flex items-center gap-2 px-4 py-2.5 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold text-emerald-400 whitespace-nowrap"
+                   title={t.sendToShipping}
+                 >
+                   <PackageIcon size={14} />
+                   {t.sendToShipping}
+                 </button>
+               )}
+               {selectedIds.some(id => {
+                 const o = orders.find(o => o.id === id);
+                 return o?.sentToEcotrack && !o.ecotrackValidated;
+               }) && (
+                 <button 
+                   onClick={handleValidateShipping}
+                   className="flex items-center gap-2 px-4 py-2.5 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all text-xs font-bold text-indigo-400 whitespace-nowrap"
+                   title={t.validateShipping}
+                 >
+                   <TrendingUp size={14} />
+                   {t.validateShipping}
+                 </button>
+               )}
+               {selectedIds.some(id => {
+                 const o = orders.find(o => o.id === id);
+                 return o?.sentToEcotrack;
+               }) && (
+                 <button 
+                   onClick={handleBulkSyncTracking}
+                   className="flex items-center gap-2 px-4 py-2.5 rounded-2xl hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-bold whitespace-nowrap"
+                   title={t.syncTrackingDesc}
+                 >
+                   <RefreshCw size={14} />
+                   {t.syncTracking}
+                 </button>
+               )}
+               {/* Print labels for sent orders */}
+               {selectedIds.some(id => {
+                 const o = orders.find(o => o.id === id);
+                 return o?.ecotrackRef;
+               }) && (
+                 <button 
+                   onClick={handlePrintLabels}
+                   className="flex items-center gap-2 px-4 py-2.5 rounded-2xl hover:bg-white hover:text-slate-900 transition-all text-xs font-bold whitespace-nowrap"
+                   title={t.printLabels}
+                 >
+                   <Printer size={14} />
+                   {t.printLabels}
+                 </button>
+               )}
                {user?.role === "ADMIN" && (
                  <button 
                   onClick={handleBulkDelete}
