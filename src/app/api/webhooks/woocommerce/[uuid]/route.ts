@@ -29,23 +29,64 @@ export async function POST(
   const { uuid } = await params;
 
   try {
+    // Log incoming webhook request
+    console.log(`[WEBHOOK] POST /api/webhooks/woocommerce/${uuid}`);
+    console.log(`[WEBHOOK] Headers:`, Object.fromEntries(req.headers.entries()));
+
     // Find integration by endpoint UUID
     const integration = await prisma.integration.findUnique({
       where: { endpointUuid: uuid },
       include: { store: true },
     });
 
-    if (!integration || !integration.isActive) {
+    if (!integration) {
+      console.log(`[WEBHOOK] Integration not found for uuid: ${uuid}`);
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Validate API key (sent as X-API-Key header)
-    const apiKey = req.headers.get("x-api-key");
-    if (!apiKey || apiKey !== integration.apiKey) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!integration.isActive) {
+      console.log(`[WEBHOOK] Integration ${integration.id} is inactive`);
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const body = await req.json();
+    console.log(`[WEBHOOK] Found integration: ${integration.id}, store: ${integration.storeId || "global"}, active: ${integration.isActive}`);
+
+    // Read body once — supports both JSON and form-encoded
+    const rawBody = await req.text();
+    const contentType = req.headers.get("content-type") || "";
+
+    // Validate API key from multiple sources:
+    // 1. x-api-key header (custom integrations)
+    // 2. URL query param ?key=xxx or ?api_key=xxx
+    // 3. Form-encoded body secret field (WooCommerce standard webhook)
+    let apiKey = req.headers.get("x-api-key");
+    if (!apiKey) apiKey = req.nextUrl.searchParams.get("key") || req.nextUrl.searchParams.get("api_key") || null;
+    if (!apiKey) {
+      try {
+        const params = new URLSearchParams(rawBody);
+        apiKey = params.get("secret") || null;
+      } catch {}
+    }
+
+    console.log(`[WEBHOOK] x-api-key header ${req.headers.get("x-api-key") ? "present" : "MISSING"}, query key: ${req.nextUrl.searchParams.get("key") ? "present" : "missing"}, content-type: ${contentType}`);
+    console.log(`[WEBHOOK] Resolved apiKey length: ${apiKey?.length || 0}, expected length: ${integration.apiKey.length}`);
+
+    if (!apiKey || apiKey !== integration.apiKey) {
+      console.log(`[WEBHOOK] 401 Unauthorized — key ${!apiKey ? "missing" : "mismatch"}`);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    console.log(`[WEBHOOK] API key validated successfully`);
+
+    // Parse body — JSON or form-encoded
+    let body: any;
+    if (contentType.includes("application/json")) {
+      try { body = JSON.parse(rawBody); } catch { body = {}; }
+    } else {
+      const params = new URLSearchParams(rawBody);
+      const raw = params.get("payload");
+      body = raw ? JSON.parse(raw) : {};
+      console.log(`[WEBHOOK] Parsed form-encoded body, payload key ${raw ? "present" : "missing"}`);
+    }
 
     // Support both single order array and single object
     const orders = Array.isArray(body) ? body : [body];

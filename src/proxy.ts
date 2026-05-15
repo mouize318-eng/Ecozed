@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
 
-const publicPaths = ["/login", "/setup", "/api/auth"];
+const publicPaths = ["/login", "/setup", "/api/auth", "/api/webhooks"];
 
 function isPublicPath(pathname: string): boolean {
   return publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));

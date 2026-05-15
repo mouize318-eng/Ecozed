@@ -76,6 +76,47 @@ Have an idea or feature request? I'd love to hear from you!
 
 ---
 
+## 🔌 How to Integrate a WooCommerce Store
+
+1. Go to **Settings → Integrations** in the dashboard
+2. Click **Add Integration**, select the store, and optionally generate a new API key or enter your own
+3. Copy the **Webhook URL** shown after creation (e.g. `https://your-domain.com/api/webhooks/woocommerce/<uuid>`)
+4. In your WooCommerce admin panel, go to **WooCommerce → Settings → Advanced → Webhooks**
+5. Click **Add Webhook**:
+   - **Name**: `Ecozed Sync`
+   - **Status**: `Active`
+   - **Topic**: `Order updated` (or any event you want to listen to)
+   - **Delivery URL**: Paste the Webhook URL from step 3, and **append `?key=YOUR_API_KEY`** to the end
+   - **Secret**: Leave empty (authentication is handled via the API key in the URL)
+6. Click **Save Webhook**
+
+> Orders with status `processing` will be automatically imported into Ecozed.
+
+---
+
+## 🚚 How to Integrate Ecotrack Shipping
+
+1. Go to **Settings → Shipping Provider** in the dashboard
+2. Click **Add Provider** and fill in:
+   - **Company**: `ecotrack`
+   - **Store**: Select the store (or leave empty for global/all stores)
+   - **Prefix**: Your Ecotrack client prefix (e.g. `world-express`)
+   - **API Key**: Your Ecotrack API token (Bearer token)
+   - **Base URL**: Leave empty to auto-generate (`https://<prefix>.ecotrack.dz`)
+3. Click **Save** — the provider will appear in the shipping section
+4. Then go to **Settings → Shipping** and seed default wilaya costs via the **Load Template** button
+5. Go to **Settings → Stop Desk** inside the provider card and click **Sync** to load stop-desk communes
+
+Once set up, you can:
+- Send orders to Ecotrack from the Orders page
+- Validate/dispatch orders
+- Print shipping labels and bordereaux (PDF)
+- Sync delivery tracking status
+
+> Toggle the provider on/off with the power button — no need to delete it when temporarily unused.
+
+---
+
 ## ⚠️ Important: Backup Before Updating
 
 Before updating your Ecozed instance to a newer version, **always export a backup** of your database first.
