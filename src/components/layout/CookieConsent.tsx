@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { Button } from "../ui";
 import { ShieldCheck } from "lucide-react";
 
 export default function CookieConsent() {
   const [show, setShow] = useState(false);
-  const { t } = useLanguage();
+  const t = useT();
 
   useEffect(() => {
     const consent = localStorage.getItem("cookie-consent");

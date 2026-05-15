@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { 
   Store as StoreIcon, 
   ChevronDown, 
@@ -15,7 +15,8 @@ import {
 
 export default function StoreSelector() {
   const { user, activeStoreIds, setActiveStoreIds } = useAuthStore();
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

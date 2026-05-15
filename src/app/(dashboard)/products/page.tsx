@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Modal, showToast } from "@/components/ui";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { useAuthStore } from "@/store/useAuthStore";
 import { 
   Plus, 
@@ -47,7 +47,8 @@ interface Product {
 }
 
 export default function ProductsPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const { user, activeStoreIds } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -58,6 +59,14 @@ export default function ProductsPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -291,43 +300,43 @@ export default function ProductsPage() {
 
       {/* No Store Warning */}
       {(user?.stores?.length || 0) === 0 && (
-        <div className="mb-8 p-6 bg-amber-50 border-2 border-amber-100 rounded-[32px] flex items-center gap-4 animate-in slide-in-from-top-2">
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm">
-            <AlertCircle size={24} />
+        <div className="mb-8 p-4 sm:p-6 bg-amber-50 border-2 border-amber-100 rounded-2xl sm:rounded-[32px] flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 animate-in slide-in-from-top-2">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
+            <AlertCircle size={20} />
           </div>
-          <div className="flex-1">
-             <h4 className="font-black text-amber-900">{t.productWarningNoStores}</h4>
-              <p className="text-amber-700 text-sm">
+          <div className="flex-1 min-w-0">
+             <h4 className="font-black text-amber-900 text-sm sm:text-base">{t.productWarningNoStores}</h4>
+              <p className="text-amber-700 text-xs sm:text-sm">
                 {t.productWarningNoStoresDesc}
               </p>
           </div>
           <Button 
             variant="secondary" 
             onClick={() => window.location.href = "/stores"}
-            className="h-10 text-xs font-bold bg-white border-amber-200 text-amber-700 hover:bg-amber-100 transition-all"
+            className="h-9 sm:h-10 text-[10px] sm:text-xs font-bold bg-white border-amber-200 text-amber-700 hover:bg-amber-100 transition-all shrink-0"
           >
             {t.manageStores}
           </Button>
         </div>
       )}
 
-      {viewMode === "list" ? (
+      {viewMode === "list" && !isMobile ? (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className={`w-full ${isRtl ? "text-right" : "text-left"}`}>
+             <table className={`w-full ${isRtl ? "text-right" : "text-left"}`}>
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-4 w-12 text-center">
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 w-10 text-center">
                     <button onClick={toggleSelectAll} className="text-slate-400 hover:text-slate-600 transition-colors">
-                      {selectedIds.length === products.length && products.length > 0 ? <CheckSquare size={20} className="text-slate-900" /> : <Square size={20} />}
+                      {selectedIds.length === products.length && products.length > 0 ? <CheckSquare size={18} className="text-slate-900" /> : <Square size={18} />}
                     </button>
                   </th>
-                  <th className="px-6 py-4 text-sm font-semibold text-slate-700">{t.productsTitle}</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-slate-700">{t.status}</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-slate-700 text-center">{t.productCost}</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-slate-700 text-center">{t.productPrice}</th>
-                  <th className="px-6 py-4 text-sm font-semibold text-slate-700 text-center">{t.netProfit}</th>
-                  <th className={`px-6 py-4 text-sm font-semibold text-slate-700 ${isRtl ? "text-left" : "text-right"}`}>{t.confirm}</th>
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm font-semibold text-slate-700">{t.productsTitle}</th>
+                  <th className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm font-semibold text-slate-700">{t.status}</th>
+                  <th className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm font-semibold text-slate-700 text-center">{t.productCost}</th>
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm font-semibold text-slate-700 text-center">{t.productPrice}</th>
+                  <th className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm font-semibold text-slate-700 text-center">{t.netProfit}</th>
+                  <th className={`px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-xs lg:text-sm font-semibold text-slate-700 ${isRtl ? "text-left" : "text-right"}`}>{t.confirm}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -338,79 +347,79 @@ export default function ProductsPage() {
 
                   return (
                     <tr key={product.id} className={`hover:bg-slate-50/80 transition-colors ${selectedIds.includes(product.id) ? "bg-slate-50" : ""}`}>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-center">
                         <button onClick={() => toggleSelect(product.id)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                          {selectedIds.includes(product.id) ? <CheckSquare size={20} className="text-slate-900" /> : <Square size={20} />}
+                          {selectedIds.includes(product.id) ? <CheckSquare size={18} className="text-slate-900" /> : <Square size={18} />}
                         </button>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                      <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
                           <button 
                             onClick={() => product.imageUrl && setPreviewImage(product.imageUrl)}
-                            className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 group relative"
+                            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 group relative"
                           >
                             {product.imageUrl ? (
                               <>
                                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Maximize2 size={14} className="text-white" />
+                                  <Maximize2 size={12} className="text-white" />
                                 </div>
                               </>
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                <ImageIcon size={20} />
+                                <ImageIcon size={16} />
                               </div>
                             )}
                           </button>
-                          <div>
-                            <div className="font-bold text-slate-900">{product.name}</div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                               <div className="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-100 text-[9px] font-black text-slate-400 uppercase tracking-widest">{storeName}</div>
-                               <span className="text-[10px] text-slate-400 font-bold tracking-tight">{product.weight ? `${product.weight} ${t.productWeightUnit}` : ""}</span>
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{product.name}</div>
+                            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                               <div className="px-1 py-0.5 rounded bg-slate-50 border border-slate-100 text-[7px] lg:text-[9px] font-black text-slate-400 uppercase tracking-widest">{storeName}</div>
+                               <span className="text-[8px] lg:text-[10px] text-slate-400 font-bold tracking-tight">{product.weight ? `${product.weight} ${t.productWeightUnit}` : ""}</span>
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${statusMap[product.status]?.color}`}>
+                      <td className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4">
+                        <span className={`px-2 py-1 lg:px-2.5 lg:py-1 rounded-full text-[8px] lg:text-[10px] font-black border uppercase tracking-wider ${statusMap[product.status]?.color}`}>
                           {statusMap[product.status]?.label}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="text-[10px] font-bold text-slate-400 mb-1 leading-none uppercase tracking-widest">{t.productTotal}: {product.cost + product.adsCost + product.extraCharges}</div>
-                        <div className="flex items-center justify-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                      <td className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-center">
+                        <div className="text-[9px] lg:text-[10px] font-bold text-slate-400 mb-1 leading-none uppercase tracking-widest">{t.productTotal}: {product.cost + product.adsCost + product.extraCharges}</div>
+                        <div className="flex items-center justify-center gap-1 lg:gap-2 text-[8px] lg:text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                           <span>{t.adsCost}: {product.adsCost}</span>
                           <span className="w-1 h-1 rounded-full bg-slate-200" />
                           <span>{t.extraCharges}: {product.extraCharges}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-center font-black text-slate-900 font-mono">
-                        {product.sellingPrice} <span className="text-[10px] font-normal text-slate-400">{t.currency}</span>
+                      <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-center font-black text-slate-900 font-mono text-xs lg:text-base">
+                        {product.sellingPrice} <span className="text-[9px] lg:text-[10px] font-normal text-slate-400">{t.currency}</span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black border ${
+                      <td className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-center">
+                        <div className={`inline-flex items-center gap-1 px-2.5 py-1 lg:px-4 lg:py-1.5 rounded-full text-[9px] lg:text-xs font-black border ${
                           isPositive ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
                         }`}>
-                          <TrendingUp size={12} className={isPositive ? "" : "rotate-180"} />
+                          <TrendingUp size={10} className={isPositive ? "" : "rotate-180"} />
                           <span>{netProfit.toFixed(0)}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className={`flex gap-1 ${isRtl ? "justify-start" : "justify-end"}`}>
+                      <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-right">
+                        <div className={`flex gap-0.5 sm:gap-1 ${isRtl ? "justify-start" : "justify-end"}`}>
                           <button 
                             onClick={() => handleOpenEdit(product)}
-                            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-none hover:shadow-lg"
+                            className="p-1.5 lg:p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg lg:rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-none hover:shadow-lg"
                           >
-                            <Pencil size={18} />
+                            <Pencil size={14} />
                           </button>
                           <button 
                             onClick={() => {
                               setProductToDelete(product.id);
                               setIsDeleteModalOpen(true);
                             }}
-                            className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-red-50 shadow-none hover:shadow-lg"
+                            className="p-1.5 lg:p-2.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg lg:rounded-xl transition-all border border-transparent hover:border-red-50 shadow-none hover:shadow-lg"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -525,7 +534,7 @@ export default function ProductsPage() {
       )}
 
       {products.length === 0 && (
-        <div className="bg-white rounded-[32px] border-2 border-dashed border-slate-200 py-32 text-center animate-in fade-in duration-500">
+        <div className="bg-white rounded-[32px] border-2 border-dashed border-slate-200 py-12 sm:py-20 lg:py-32 text-center animate-in fade-in duration-500">
           <div className="flex flex-col items-center gap-6">
             <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 shadow-inner">
               <PackageIcon size={48} strokeWidth={1} />
@@ -601,7 +610,7 @@ export default function ProductsPage() {
             <div className="md:col-span-2">
               <Input
                 label={t.landingPageUrl}
-                placeholder="https://example.com/landing-page"
+                placeholder={t.landingPagePlaceholder}
                 value={formData.landingPageUrl}
                 onChange={(e) => setFormData({ ...formData, landingPageUrl: e.target.value })}
                 className="h-12"
@@ -610,7 +619,7 @@ export default function ProductsPage() {
             <div className="md:col-span-2">
               <Input
                 label={t.imageUrl}
-                placeholder="https://example.com/image.jpg"
+                placeholder={t.imageUrlPlaceholder}
                 value={formData.imageUrl}
                 onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                 className="h-12"
@@ -682,7 +691,7 @@ export default function ProductsPage() {
               {formData.offers.length > 0 && (
                 <div className="space-y-2">
                   {formData.offers.map((offer, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div key={index} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
                       <div className="flex-1 flex items-center gap-2">
                         <input
                           type="number"
@@ -694,9 +703,9 @@ export default function ProductsPage() {
                             newOffers[index] = { ...newOffers[index], qty: parseInt(e.target.value) || 0 };
                             setFormData({ ...formData, offers: newOffers });
                           }}
-                          className="w-20 h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                          className="w-16 sm:w-20 h-10 px-2 sm:px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
                         />
-                        <span className="text-xs font-bold text-slate-400">x</span>
+                        <span className="text-xs font-bold text-slate-400 shrink-0">x</span>
                         <input
                           type="number"
                           min="0"
@@ -708,9 +717,9 @@ export default function ProductsPage() {
                             newOffers[index] = { ...newOffers[index], price: parseInt(e.target.value) || 0 };
                             setFormData({ ...formData, offers: newOffers });
                           }}
-                          className="flex-1 h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold text-left focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                          className="flex-1 h-10 px-2 sm:px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold text-left focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 transition-all min-w-0"
                         />
-                        <span className="text-[10px] font-black text-slate-400 w-8">{t.currency}</span>
+                        <span className="text-[10px] font-black text-slate-400 w-6 sm:w-8 shrink-0">{t.currency}</span>
                       </div>
                       <button
                         type="button"
@@ -718,7 +727,7 @@ export default function ProductsPage() {
                           const newOffers = formData.offers.filter((_, i) => i !== index);
                           setFormData({ ...formData, offers: newOffers });
                         }}
-                        className="p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                        className="self-end sm:self-auto p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
                       >
                         <Minus size={16} />
                       </button>
@@ -834,7 +843,7 @@ export default function ProductsPage() {
           <div className="relative max-w-4xl max-h-[90vh] animate-in zoom-in-95 duration-200">
             <img 
               src={previewImage} 
-              alt="Preview" 
+              alt={t.productPreviewAlt} 
               className="rounded-[32px] shadow-2xl border-4 border-white object-contain"
             />
             <button 

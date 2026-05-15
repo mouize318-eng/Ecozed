@@ -10,7 +10,6 @@ export const translations = { ar, en };
 interface LanguageState {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: typeof ar;
 }
 
 const getInitialLanguage = (): Language => {
@@ -26,20 +25,16 @@ export const useLanguage = create<LanguageState>()(
         if (typeof window !== "undefined") {
           document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
           document.documentElement.lang = lang;
-          // Set cookie for persistence (1 year)
           document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000`;
         }
-      },
-      get t() {
-        return translations[get().language] || translations.ar;
       },
     }),
     {
       name: "language-storage",
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ language: state.language }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Ensure DOM is updated after hydration
           document.documentElement.dir = state.language === "ar" ? "rtl" : "ltr";
           document.documentElement.lang = state.language;
         }
@@ -47,3 +42,8 @@ export const useLanguage = create<LanguageState>()(
     }
   )
 );
+
+export function useT() {
+  const language = useLanguage((s) => s.language);
+  return translations[language] || translations.ar;
+}

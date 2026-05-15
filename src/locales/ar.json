@@ -224,6 +224,8 @@
   "settingsDeleted": "تم الحذف بنجاح",
   "settingsProviderUpdated": "تم تحديث شركة الشحن!",
   "settingsProviderAdded": "تم إضافة شركة الشحن!",
+  "settingsProviderEnabled": "تم تفعيل شركة الشحن",
+  "settingsProviderDisabled": "تم إلغاء تفعيل شركة الشحن",
   "settingsStatesUpdated": "تم تحديث جميع الولايات المحددة!",
   "settingsBulkUpdateFailed": "فشل التحديث الجماعي",
   "settingsCommunesCount": "تمت مزامنة {count} بلدية",
@@ -394,5 +396,12 @@
   "rateLimitError": "تم تجاوز الحد المسموح من الطلبات. الرجاء الانتظار والمحاولة مرة أخرى.",
   "usernamePlaceholder": "أدخل اسم المستخدم",
   "confirmPassword": "تأكيد كلمة المرور",
-  "passwordsDoNotMatch": "كلمتا المرور غير متطابقتين"
+  "passwordsDoNotMatch": "كلمتا المرور غير متطابقتين",
+  "productPreviewAlt": "معاينة",
+  "landingPagePlaceholder": "https://example.com/landing-page",
+  "imageUrlPlaceholder": "https://example.com/image.jpg",
+  "settingsLoadFailed": "فشل في تحميل البيانات",
+  "loginSuccess": "مرحباً بعودتك!",
+  "settingsIntegrationEnabled": "تم تفعيل التكامل",
+  "settingsIntegrationDisabled": "تم إلغاء تفعيل التكامل"
 }

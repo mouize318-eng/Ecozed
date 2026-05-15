@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button, Input, Modal, showToast } from "@/components/ui";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { useAuthStore } from "@/store/useAuthStore";
 import { 
   Store as StoreIcon, 
@@ -31,7 +31,8 @@ interface Store {
 }
 
 export default function StoresPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const setUser = useAuthStore((state) => state.setUser);
   const [stores, setStores] = useState<Store[]>([]);
   const [filter, setFilter] = useState("");

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
+import { showToast } from "@/components/ui";
 import { 
   ShoppingCart, 
   Clock, 
@@ -17,7 +18,8 @@ import {
 
 export default function DashboardPage() {
   const { activeStoreIds } = useAuthStore();
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const [stats, setStats] = useState({
     orderCount: 0,
     pendingCount: 0,
@@ -36,7 +38,11 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setStats(data);
+      } else {
+        showToast("error", t.settingsLoadFailed);
       }
+    } catch {
+      showToast("error", t.genericError);
     } finally {
       setIsLoading(false);
     }

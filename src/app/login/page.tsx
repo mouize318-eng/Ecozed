@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, showToast } from "@/components/ui";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { Package } from "lucide-react";
 
 export default function LoginPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +46,7 @@ export default function LoginPage() {
 
       if (res.ok) {
         setUser(data.user);
+        showToast("success", t.loginSuccess);
         router.push("/dashboard");
       } else {
         const errorMap: Record<string, string> = {

@@ -224,6 +224,8 @@
   "settingsDeleted": "Deleted successfully",
   "settingsProviderUpdated": "Shipping provider updated!",
   "settingsProviderAdded": "Shipping provider added!",
+  "settingsProviderEnabled": "Shipping provider enabled",
+  "settingsProviderDisabled": "Shipping provider disabled",
   "settingsStatesUpdated": "All selected states updated!",
   "settingsBulkUpdateFailed": "Bulk update failed",
   "settingsCommunesCount": "{count} communes synced",
@@ -394,5 +396,12 @@
   "rateLimitError": "Rate limit exceeded. Please wait a moment and try again.",
   "usernamePlaceholder": "Enter username",
   "confirmPassword": "Confirm Password",
-  "passwordsDoNotMatch": "Passwords do not match"
+  "passwordsDoNotMatch": "Passwords do not match",
+  "productPreviewAlt": "Preview",
+  "landingPagePlaceholder": "https://example.com/landing-page",
+  "imageUrlPlaceholder": "https://example.com/image.jpg",
+  "settingsLoadFailed": "Failed to load data",
+  "loginSuccess": "Welcome back!",
+  "settingsIntegrationEnabled": "Integration enabled",
+  "settingsIntegrationDisabled": "Integration disabled"
 }

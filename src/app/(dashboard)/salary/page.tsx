@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button, Modal } from "@/components/ui";
-import { useLanguage } from "@/lib/translations";
+import { Button, Modal, showToast } from "@/components/ui";
+import { useLanguage, useT } from "@/lib/translations";
 import { 
   Wallet, 
   User, 
@@ -67,7 +67,8 @@ interface Worker {
 }
 
 export default function SalaryPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
   const [salaryData, setSalaryData] = useState<SalaryData | null>(null);
@@ -94,8 +95,11 @@ export default function SalaryPage() {
         fetch(`/api/salary/history?userId=${workerId}`),
       ]);
       if (salaryRes.ok) setSalaryData(await salaryRes.json());
+      else showToast("error", t.settingsLoadFailed);
       if (performanceRes.ok) setPerformanceData(await performanceRes.json());
       if (historyRes.ok) setPayoutHistory(await historyRes.json());
+    } catch {
+      showToast("error", t.genericError);
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +133,13 @@ export default function SalaryPage() {
         setIsSuccessModalOpen(true);
         setSalaryData(null);
         setSelectedWorkerId("");
+        showToast("success", t.productCreated);
+      } else {
+        const err = await res.json();
+        showToast("error", err.error || t.settingsSaveFailed);
       }
+    } catch {
+      showToast("error", t.genericError);
     } finally {
       setIsProcessingPayout(false);
     }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button, Input, Modal, showToast } from "@/components/ui";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { 
   UserPlus, 
   Trash2, 
@@ -38,7 +38,8 @@ interface Worker {
 }
 
 export default function UsersPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -133,6 +134,7 @@ export default function UsersPage() {
 
     if (res.ok) {
       setIsModalOpen(false);
+      showToast("success", editingWorker ? t.productUpdated : t.productCreated);
       fetchWorkers();
     } else {
       const data = await res.json();
@@ -148,7 +150,10 @@ export default function UsersPage() {
     if (res.ok) {
       setIsDeleteModalOpen(false);
       setWorkerToDelete(null);
+      showToast("success", t.productDeleted);
       fetchWorkers();
+    } else {
+      showToast("error", t.productFailedDelete);
     }
     setIsLoading(false);
   };

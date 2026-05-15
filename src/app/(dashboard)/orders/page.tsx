@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button, Input, Modal } from "@/components/ui";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { useAuthStore } from "@/store/useAuthStore";
 import { showToast } from "@/components/ui";
 import { 
@@ -85,7 +85,8 @@ interface Order {
 }
 
 export default function OrdersPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const { user, activeStoreIds } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -111,6 +112,14 @@ export default function OrdersPage() {
   const communeRef = useRef<HTMLDivElement>(null);
   const [stopDeskCommunes, setStopDeskCommunes] = useState<Set<string> | null>(null);
   const [loadingStopDesk, setLoadingStopDesk] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -351,7 +360,10 @@ export default function OrdersPage() {
 
     if (res.ok) {
       setIsModalOpen(false);
+      showToast("success", t.productCreated);
       fetchOrders();
+    } else {
+      showToast("error", t.productFailedSave);
     }
     setIsLoading(false);
   };
@@ -361,7 +373,12 @@ export default function OrdersPage() {
       method: "PUT",
       body: JSON.stringify({ status: newStatus }),
     });
-    if (res.ok) fetchOrders();
+    if (res.ok) {
+      showToast("success", t.productUpdated);
+      fetchOrders();
+    } else {
+      showToast("error", t.productFailedSave);
+    }
   };
 
   const handleBulkUpdate = async (status: string) => {
@@ -372,7 +389,10 @@ export default function OrdersPage() {
     });
     if (res.ok) {
       setSelectedIds([]);
+      showToast("success", t.productBulkUpdated.replace("{count}", selectedIds.length.toString()));
       fetchOrders();
+    } else {
+      showToast("error", t.productFailedUpdateBulk);
     }
     setIsLoading(false);
   };
@@ -385,7 +405,10 @@ export default function OrdersPage() {
     });
     if (res.ok) {
       setSelectedIds([]);
+      showToast("success", t.productBulkDeleted.replace("{count}", selectedIds.length.toString()));
       fetchOrders();
+    } else {
+      showToast("error", t.productFailedDeleteBulk);
     }
     setIsLoading(false);
   };
@@ -592,7 +615,10 @@ export default function OrdersPage() {
     if (res.ok) {
       setIsDeleteModalOpen(false);
       setOrderToDelete(null);
+      showToast("success", t.productDeleted);
       fetchOrders();
+    } else {
+      showToast("error", t.productFailedDelete);
     }
     setIsLoading(false);
   };
@@ -714,7 +740,7 @@ export default function OrdersPage() {
       </div>
 
       {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-[32px] border border-slate-200 border-dashed p-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-500">
+        <div className="bg-white rounded-[32px] border border-slate-200 border-dashed p-8 sm:p-12 lg:p-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-500">
           <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-200">
             <Inbox size={48} />
           </div>
@@ -737,26 +763,26 @@ export default function OrdersPage() {
             </Button>
           )}
         </div>
-      ) : viewMode === "list" ? (
+      ) : viewMode === "list" && !isMobile ? (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className={`w-full border-collapse ${isRtl ? "text-right" : "text-left"}`}>
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-4 w-10">
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 w-10">
                     <button onClick={toggleSelectAll} className="text-slate-400 hover:text-slate-900 transition-colors">
                       {selectedIds.length === filteredOrders.length ? <CheckSquare size={20} className="text-indigo-600" /> : <Square size={20} />}
                     </button>
                   </th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">{t.clientName}</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">{t.productsTitle}</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.quantity}</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.totalPrice}</th>
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest">{t.clientName}</th>
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest">{t.productsTitle}</th>
+                  <th className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.quantity}</th>
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.totalPrice}</th>
                   {user?.role === "ADMIN" && (
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.realProfit}</th>
+                    <th className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest text-center">{t.realProfit}</th>
                   )}
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">{t.status}</th>
-                  <th className={`px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest ${isRtl ? "text-left" : "text-right"}`}>{t.confirm}</th>
+                  <th className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest">{t.status}</th>
+                  <th className={`px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest ${isRtl ? "text-left" : "text-right"}`}>{t.confirm}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -768,109 +794,109 @@ export default function OrdersPage() {
                   const storeName = user?.stores.find(s => s.id === order.storeId)?.name;
 
                    return (
-                     <tr key={order.id} className={`hover:bg-slate-50/80 transition-colors group ${isSelected ? "bg-indigo-50/30" : ""}`}>
-                      <td className="px-6 py-4">
-                        <button onClick={() => toggleSelect(order.id)} className="text-slate-300 hover:text-indigo-600 transition-colors">
-                          {isSelected ? <CheckSquare size={20} className="text-indigo-600" /> : <Square size={20} />}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900">{order.clientName}</span>
-                            {order.isBlacklisted && <AlertCircle size={14} className="text-red-500" />}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                             <div className="px-1 py-0.5 rounded bg-slate-50 border border-slate-100 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">{storeName}</div>
-                             <span className="text-[10px] text-slate-400 font-bold font-mono">{order.clientPhone1}</span>
-                              {order.confirmedBy && (
-                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-700 leading-none shadow-sm">
-                                  <UserCheck size={10} />
-                                  {order.confirmedBy.username}
-                                </span>
-                              )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-slate-700">{order.product.name}</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{order.state} - {order.city}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="px-3 py-1 bg-slate-100 text-slate-900 rounded-lg text-xs font-black">x{order.quantity}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                         <span className="text-sm font-black text-slate-900">{revenue.toFixed(0)} {t.currency}</span>
-                      </td>
-                      {user?.role === "ADMIN" && (
-                        <td className="px-6 py-4 text-center">
-                          <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black border ${
-                            realProfit > 0 ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
-                          }`}>
-                            <TrendingUp size={12} className={realProfit > 0 ? "" : "rotate-180"} />
-                            {realProfit.toFixed(0)} {t.currency}
-                          </div>
-                        </td>
-                      )}
-                      <td className="px-6 py-4">
-                        <select 
-                          value={order.status}
-                          onChange={(e) => updateStatus(order.id, e.target.value)}
-                          className={`text-[10px] font-black rounded-xl border px-3 py-2 focus:outline-none focus:ring-4 focus:ring-slate-900/5 transition-all cursor-pointer ${
-                            statusOptions.find(s => s.value === order.status)?.color
-                          }`}
-                        >
-                          {statusOptions.map(opt => (
-                            <option key={opt.value} value={opt.value} className="bg-white text-slate-900">{opt.label}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className={`flex gap-1 ${isRtl ? "justify-end" : "justify-start"}`}>
-                          {order.ecotrackRef && (
-                            <>
-                              <span className="px-2 py-1 rounded-lg text-[8px] font-black leading-none bg-blue-100 text-blue-700 border border-blue-200">
-                                <PackageIcon size={10} className="inline mr-0.5" />
-                                {t.sentToShipping}
-                              </span>
-                              <button 
-                                onClick={() => handlePrintLabel(order.id)}
-                                className="p-2.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
-                                title={t.printLabel}
-                              >
-                                <Printer size={18} />
-                              </button>
-                              <span className={`px-2 py-1 rounded-lg text-[8px] font-black leading-none ${
-                                order.ecotrackValidated 
-                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-200" 
-                                  : "bg-amber-100 text-amber-700 border border-amber-200"
-                              }`}>
-                                {order.ecotrackValidated ? t.validated : t.notValidated}
-                              </span>
-                            </>
-                          )}
-                          <button 
-                            onClick={() => handleOpenEdit(order)}
-                            className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-xl shadow-none hover:shadow-lg transition-all border border-transparent hover:border-slate-100"
-                          >
-                            <Pencil size={18} />
-                          </button>
-                          {user?.role === "ADMIN" && (
-                            <button 
-                              onClick={() => {
-                                setOrderToDelete(order.id);
-                                setIsDeleteModalOpen(true);
-                              }}
-                              className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-xl shadow-none hover:shadow-lg transition-all border border-transparent hover:border-red-50"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                      <tr key={order.id} className={`hover:bg-slate-50/80 transition-colors group ${isSelected ? "bg-indigo-50/30" : ""}`}>
+                       <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4">
+                         <button onClick={() => toggleSelect(order.id)} className="text-slate-300 hover:text-indigo-600 transition-colors">
+                           {isSelected ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}
+                         </button>
+                       </td>
+                       <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4">
+                         <div className="flex flex-col">
+                           <div className="flex items-center gap-1.5 sm:gap-2">
+                             <span className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[100px] sm:max-w-none">{order.clientName}</span>
+                             {order.isBlacklisted && <AlertCircle size={12} className="text-red-500 shrink-0" />}
+                           </div>
+                           <div className="flex flex-wrap items-center gap-1">
+                              <div className="px-1 py-0.5 rounded bg-slate-50 border border-slate-100 text-[7px] lg:text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">{storeName}</div>
+                              <span className="text-[8px] lg:text-[10px] text-slate-400 font-bold font-mono">{order.clientPhone1}</span>
+                               {order.confirmedBy && (
+                                 <span className="flex items-center gap-0.5 px-1 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[7px] lg:text-[9px] font-black text-emerald-700 leading-none shadow-sm">
+                                   <UserCheck size={8} />
+                                   {order.confirmedBy.username}
+                                 </span>
+                               )}
+                           </div>
+                         </div>
+                       </td>
+                       <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4">
+                         <div className="flex flex-col">
+                           <span className="text-[11px] lg:text-sm font-bold text-slate-700 truncate max-w-[120px] sm:max-w-[180px] lg:max-w-none">{order.product.name}</span>
+                           <span className="text-[8px] lg:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">{order.state} - {order.city}</span>
+                         </div>
+                       </td>
+                       <td className="hidden md:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-center">
+                         <span className="px-2 sm:px-3 py-1 bg-slate-100 text-slate-900 rounded-lg text-[10px] lg:text-xs font-black">x{order.quantity}</span>
+                       </td>
+                       <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-center">
+                          <span className="text-xs lg:text-sm font-black text-slate-900 whitespace-nowrap">{revenue.toFixed(0)} {t.currency}</span>
+                       </td>
+                       {user?.role === "ADMIN" && (
+                         <td className="hidden lg:table-cell px-2 sm:px-4 lg:px-6 py-3 lg:py-4 text-center">
+                           <div className={`inline-flex items-center gap-1 px-3 py-1 lg:px-4 lg:py-1.5 rounded-full text-[9px] lg:text-xs font-black border ${
+                             realProfit > 0 ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
+                           }`}>
+                             <TrendingUp size={10} />
+                             <span>{realProfit.toFixed(0)} {t.currency}</span>
+                           </div>
+                         </td>
+                       )}
+                       <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4">
+                         <select 
+                           value={order.status}
+                           onChange={(e) => updateStatus(order.id, e.target.value)}
+                           className={`text-[9px] lg:text-[10px] font-black rounded-lg lg:rounded-xl border px-2 lg:px-3 py-1 lg:py-2 focus:outline-none focus:ring-4 focus:ring-slate-900/5 transition-all cursor-pointer max-w-[100px] lg:max-w-none ${
+                             statusOptions.find(s => s.value === order.status)?.color
+                           }`}
+                         >
+                           {statusOptions.map(opt => (
+                             <option key={opt.value} value={opt.value} className="bg-white text-slate-900">{opt.label}</option>
+                           ))}
+                         </select>
+                       </td>
+                       <td className="px-2 sm:px-4 lg:px-6 py-3 lg:py-4">
+                         <div className={`flex gap-0.5 sm:gap-1 ${isRtl ? "justify-end" : "justify-start"}`}>
+                           {order.ecotrackRef && (
+                             <>
+                               <span className="hidden lg:inline px-2 py-1 rounded-lg text-[8px] font-black leading-none bg-blue-100 text-blue-700 border border-blue-200">
+                                 <PackageIcon size={10} className="inline mr-0.5" />
+                                 {t.sentToShipping}
+                               </span>
+                               <button 
+                                 onClick={() => handlePrintLabel(order.id)}
+                                 className="p-1.5 lg:p-2.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg lg:rounded-xl transition-all border border-transparent hover:border-blue-100"
+                                 title={t.printLabel}
+                               >
+                                 <Printer size={14} />
+                               </button>
+                               <span className={`hidden lg:inline px-2 py-1 rounded-lg text-[8px] font-black leading-none ${
+                                 order.ecotrackValidated 
+                                   ? "bg-emerald-100 text-emerald-700 border border-emerald-200" 
+                                   : "bg-amber-100 text-amber-700 border border-amber-200"
+                               }`}>
+                                 {order.ecotrackValidated ? t.validated : t.notValidated}
+                               </span>
+                             </>
+                           )}
+                           <button 
+                             onClick={() => handleOpenEdit(order)}
+                             className="p-1.5 lg:p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg lg:rounded-xl shadow-none hover:shadow-lg transition-all border border-transparent hover:border-slate-100"
+                           >
+                             <Pencil size={14} />
+                           </button>
+                           {user?.role === "ADMIN" && (
+                             <button 
+                               onClick={() => {
+                                 setOrderToDelete(order.id);
+                                 setIsDeleteModalOpen(true);
+                               }}
+                               className="p-1.5 lg:p-2.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg lg:rounded-xl shadow-none hover:shadow-lg transition-all border border-transparent hover:border-red-50"
+                             >
+                               <Trash2 size={14} />
+                             </button>
+                           )}
+                         </div>
+                       </td>
+                     </tr>
                   );
                 })}
               </tbody>
@@ -878,7 +904,7 @@ export default function OrdersPage() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {filteredOrders.map((order) => {
             const storeName = user?.stores.find(s => s.id === order.storeId)?.name;
             const revenue = order.totalPrice || ((order.product.sellingPrice * order.quantity) + order.shippingCost);
@@ -1052,24 +1078,24 @@ export default function OrdersPage() {
 
       {/* Floating Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 duration-500">
-          <div className="bg-slate-900 text-white px-6 py-4 rounded-[32px] shadow-2xl shadow-indigo-500/20 flex items-center gap-6 border-4 border-white">
-            <div className="flex items-center gap-3 pr-6 border-r border-slate-700">
-              <div className="w-10 h-10 bg-indigo-500 rounded-2xl flex items-center justify-center font-black text-lg">
+        <div className="fixed bottom-4 sm:bottom-10 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 duration-500 max-w-[calc(100vw-16px)] sm:max-w-none">
+          <div className="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl sm:rounded-[32px] shadow-2xl shadow-indigo-500/20 flex items-center gap-3 sm:gap-6 border-2 sm:border-4 border-white overflow-x-auto">
+            <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 border-r border-slate-700 shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-500 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-sm sm:text-lg">
                 {selectedIds.length}
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-black uppercase tracking-widest text-slate-400">{t.selected}</span>
-                <span className="text-sm font-bold">{t.orders}</span>
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-400">{t.selected}</span>
+                <span className="text-xs sm:text-sm font-bold">{t.orders}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {statusOptions.map(opt => (
                 <button
                   key={opt.value}
                   onClick={() => handleBulkUpdate(opt.value)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl hover:bg-white hover:text-slate-900 transition-all text-xs font-bold whitespace-nowrap"
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl hover:bg-white hover:text-slate-900 transition-all text-[10px] sm:text-xs font-bold whitespace-nowrap"
                 >
                   <opt.icon size={14} />
                   {opt.label}
@@ -1077,7 +1103,7 @@ export default function OrdersPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-2 pl-6 border-l border-slate-700">
+            <div className="flex items-center gap-1 sm:gap-2 pl-3 sm:pl-6 border-l border-slate-700 shrink-0">
                {(() => {
                   const hasActiveProvider = selectedIds.some(id => {
                     const o = orders.find(o => o.id === id);
@@ -1159,20 +1185,20 @@ export default function OrdersPage() {
                   </button>
                 )}
                {user?.role === "ADMIN" && (
-                 <button 
-                  onClick={handleBulkDelete}
-                  className="p-2.5 rounded-2xl text-red-400 hover:bg-red-500 hover:text-white transition-all"
-                  title={t.delete}
-                 >
-                   <Trash2 size={20} />
-                 </button>
-               )}
-               <button 
-                onClick={() => setSelectedIds([])}
-                className="p-2.5 rounded-2xl text-slate-400 hover:bg-slate-800 transition-all"
-               >
-                 <X size={20} />
-               </button>
+                  <button 
+                   onClick={handleBulkDelete}
+                   className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                   title={t.delete}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+                <button 
+                 onClick={() => setSelectedIds([])}
+                 className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl text-slate-400 hover:bg-slate-800 transition-all"
+                >
+                  <X size={18} />
+                </button>
             </div>
           </div>
         </div>

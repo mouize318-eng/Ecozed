@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import { initAuthInterceptor } from "@/lib/http-client";
 import CookieConsent from "./CookieConsent";
 import StoreSelector from "./StoreSelector";
@@ -22,7 +22,9 @@ import {
   Check,
   Settings,
   Store as StoreIcon,
-  Wallet
+  Wallet,
+  Menu,
+  X
 } from "lucide-react";
 
 const DzFlag = () => (
@@ -46,9 +48,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, setUser, logout } = useAuthStore();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
+  const t = useT();
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const authChecked = useRef(false);
 
@@ -100,6 +104,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     checkAuth();
   }, []);
 
+  // Close sidebar on navigation
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen]);
+
   // Listen for 401 from any API call via the interceptor
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -138,21 +157,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className={`flex min-h-screen bg-slate-50 ${isRtl ? "font-cairo text-right" : "text-left"}`} dir={isRtl ? "rtl" : "ltr"}>
+      {/* Backdrop overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`w-64 bg-white border-slate-200 flex flex-col fixed inset-y-0 z-50 transition-all duration-300 ${
-        isRtl ? "border-l right-0" : "border-r left-0"
-      }`}>
-        <div className="p-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg shadow-slate-200">
+      <aside className={`
+        w-64 bg-white border-slate-200 flex flex-col fixed inset-y-0 z-50
+        transition-transform duration-300 ease-in-out
+        ${isRtl ? "border-l right-0" : "border-r left-0"}
+        ${sidebarOpen ? "translate-x-0" : isRtl ? "translate-x-full" : "-translate-x-full"}
+        lg:translate-x-0
+      `}>
+        <div className="flex items-center justify-between p-6 lg:p-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg shadow-slate-200 shrink-0">
               <Package size={24} />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">{t.appName}</h2>
+            <h2 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight">{t.appName}</h2>
           </div>
-          <div className="h-1 w-12 bg-slate-900 rounded-full" />
+          {/* Close button on mobile */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-2 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-50 transition-all"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-3 lg:px-4 space-y-1 lg:space-y-2">
           {navItems.map((item) => {
             if (item.adminOnly && user?.role !== "ADMIN") return null;
             
@@ -163,14 +200,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all duration-300 ${
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-4 lg:px-5 py-3 lg:py-3.5 rounded-2xl transition-all duration-300 ${
                   isActive 
-                    ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20 translate-x-1" 
+                    ? "bg-slate-900 text-white shadow-xl shadow-slate-900/20 lg:translate-x-1" 
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
-                <Icon size={20} />
-                <span className="font-bold text-sm">{item.name}</span>
+                <Icon size={20} className="shrink-0" />
+                <span className="font-bold text-xs lg:text-sm whitespace-nowrap">{item.name}</span>
                 {isActive && (
                   <div className={isRtl ? "mr-auto" : "ml-auto"}>
                     {isRtl ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -181,63 +219,71 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-4 lg:p-6 border-t border-slate-100">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-5 py-4 text-red-500 hover:bg-red-50 rounded-2xl transition-all duration-300 group"
+            className="flex items-center gap-3 w-full px-4 lg:px-5 py-3 lg:py-4 text-red-500 hover:bg-red-50 rounded-2xl transition-all duration-300 group"
           >
-            <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="font-bold text-sm">{t.logout}</span>
+            <LogOut size={20} className="shrink-0 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-bold text-xs lg:text-sm whitespace-nowrap">{t.logout}</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 ${isRtl ? "mr-64" : "ml-64"}`}>
-        <header className="h-24 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-10 sticky top-0 z-40">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+      <main className={`flex-1 transition-all duration-300 ${isRtl ? "lg:mr-64" : "lg:ml-64"}`}>
+        <header className="flex items-center justify-between sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200 h-16 lg:h-24 px-4 sm:px-6 lg:px-10">
+          <div className="flex items-center gap-3">
+            {/* Hamburger menu button — visible below lg */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all"
+              aria-label="Open sidebar"
+            >
+              <Menu size={22} />
+            </button>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 tracking-tight truncate max-w-[160px] sm:max-w-xs">
               {navItems.find(i => i.href === pathname)?.name || t.dashboard}
             </h1>
           </div>
           
-          <div className="flex items-center gap-4">
-            <StoreSelector />
-            <div className="h-10 w-px bg-slate-200 mx-2" />
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
+            <div className="hidden sm:block"><StoreSelector /></div>
+            <div className="h-6 lg:h-10 w-px bg-slate-200 mx-1 sm:mx-2" />
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsLangOpen(!isLangOpen)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 transition-all group"
+                className="flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 rounded-xl hover:bg-slate-50 transition-all group"
               >
-                <div className="w-6 h-4 overflow-hidden shadow-sm border border-slate-200">
+                <div className="w-5 h-3.5 lg:w-6 lg:h-4 overflow-hidden shadow-sm border border-slate-200">
                   {language === "ar" ? <DzFlag /> : <UsFlag />}
                 </div>
                 {isLangOpen ? <ChevronUp size={14} className="text-indigo-600" /> : <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600" />}
               </button>
 
               {isLangOpen && (
-                <div className={`absolute top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 animate-in fade-in slide-in-from-top-2 duration-200 ${isRtl ? "left-0" : "right-0"}`}>
+                <div className={`absolute top-full mt-2 w-40 lg:w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 animate-in fade-in slide-in-from-top-2 duration-200 ${isRtl ? "left-0" : "right-0"}`}>
                   <button
                     onClick={() => { setLanguage("en"); setIsLangOpen(false); }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center justify-between px-3 lg:px-4 py-2 lg:py-2.5 hover:bg-slate-50 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-4 overflow-hidden border border-slate-100">
+                    <div className="flex items-center gap-2 lg:gap-3">
+                      <div className="w-5 h-3.5 lg:w-6 lg:h-4 overflow-hidden border border-slate-100">
                         <UsFlag />
                       </div>
-                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{t.layoutEnglish}</span>
+                      <span className="text-[10px] lg:text-xs font-bold text-slate-700 uppercase tracking-wider">{t.layoutEnglish}</span>
                     </div>
                     {language === "en" && <Check size={14} className="text-emerald-500" />}
                   </button>
                   <button
                     onClick={() => { setLanguage("ar"); setIsLangOpen(false); }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center justify-between px-3 lg:px-4 py-2 lg:py-2.5 hover:bg-slate-50 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-4 overflow-hidden border border-slate-100">
+                    <div className="flex items-center gap-2 lg:gap-3">
+                      <div className="w-5 h-3.5 lg:w-6 lg:h-4 overflow-hidden border border-slate-100">
                         <DzFlag />
                       </div>
-                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{t.layoutArabic}</span>
+                      <span className="text-[10px] lg:text-xs font-bold text-slate-700 uppercase tracking-wider">{t.layoutArabic}</span>
                     </div>
                     {language === "ar" && <Check size={14} className="text-emerald-500" />}
                   </button>
@@ -245,29 +291,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
 
-            <div className="h-10 w-px bg-slate-200 mx-2" />
+            <div className="h-6 lg:h-10 w-px bg-slate-200 mx-1 sm:mx-2" />
 
-            <div className="flex items-center gap-4 px-4 py-2">
-              <div className={isRtl ? "text-left" : "text-right"}>
-                <p className="text-sm font-black text-slate-900 leading-tight mb-1">{user?.username}</p>
+            <div className="flex items-center gap-2 lg:gap-4 px-2 lg:px-4 py-1 lg:py-2">
+              <div className={`hidden sm:block ${isRtl ? "text-left" : "text-right"}`}>
+                <p className="text-xs lg:text-sm font-black text-slate-900 leading-tight mb-0.5 lg:mb-1 truncate max-w-[80px] lg:max-w-[120px]">{user?.username}</p>
                 <div className={`flex items-center gap-1.5 ${isRtl ? "flex-row-reverse" : "flex-row"}`}>
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                   <span className="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     {user?.role === "ADMIN" ? t.admin : t.worker}
                    </span>
                 </div>
               </div>
               <div className="relative">
-                <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-bold text-lg shadow-lg border-2 border-white ring-1 ring-slate-100">
+                <div className="w-9 h-9 lg:w-12 lg:h-12 bg-slate-900 text-white rounded-xl lg:rounded-2xl flex items-center justify-center font-bold text-sm lg:text-lg shadow-lg border-2 border-white ring-1 ring-slate-100">
                   {user?.username?.charAt(0).toUpperCase()}
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 lg:w-4 lg:h-4 bg-emerald-500 border-2 border-white rounded-full" />
               </div>
             </div>
           </div>
         </header>
 
-        <div className="p-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
+        <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
           {children}
         </div>
       </main>

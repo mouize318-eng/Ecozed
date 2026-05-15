@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button, Modal, showToast } from "@/components/ui";
-import { useLanguage } from "@/lib/translations";
+import { useLanguage, useT } from "@/lib/translations";
 import {
   Download,
   Upload,
@@ -48,7 +48,8 @@ interface ShippingConfig {
 }
 
 export default function SettingsPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const t = useT();
   const [activeSection, setActiveSection] = useState<SettingsSection>("shipping");
   const [shippingConfigs, setShippingConfigs] = useState<ShippingConfig[]>([]);
   const [shippingFilter, setShippingFilter] = useState("");
@@ -219,12 +220,13 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" }
       });
       if (res.ok) {
-        setStatus({ type: "success", message: t.settingsShippingCostsUpdated });
-        // Clear status after 3 seconds
-        setTimeout(() => setStatus(null), 3000);
+        showToast("success", t.settingsShippingCostsUpdated);
+        fetchShipping();
+      } else {
+        showToast("error", t.settingsUpdateFailed);
       }
-    } catch (error) {
-      setStatus({ type: "error", message: t.settingsUpdateFailed });
+    } catch {
+      showToast("error", t.settingsUpdateFailed);
     }
   };
 
@@ -258,13 +260,10 @@ export default function SettingsPage() {
       if (res.ok) {
         setIsIntegrationModalOpen(false);
         fetchIntegrations();
-        setStatus({ type: "success", message: editingIntegration
-          ? t.settingsIntegrationUpdated
-          : t.settingsIntegrationCreated });
-        setTimeout(() => setStatus(null), 3000);
+        showToast("success", editingIntegration ? t.settingsIntegrationUpdated : t.settingsIntegrationCreated);
       } else {
         const err = await res.json();
-        setStatus({ type: "error", message: err.error || t.settingsSaveFailed });
+        showToast("error", err.error || t.settingsSaveFailed);
       }
     } finally {
       setIsLoading(false);
@@ -272,12 +271,21 @@ export default function SettingsPage() {
   };
 
   const handleToggleIntegrationStatus = async (integration: any) => {
-    const res = await fetch(`/api/settings/integrations/${integration.id}`, {
-      method: "PUT",
-      body: JSON.stringify({ isActive: !integration.isActive }),
-      headers: { "Content-Type": "application/json" },
-    });
-    if (res.ok) fetchIntegrations();
+    try {
+      const res = await fetch(`/api/settings/integrations/${integration.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isActive: !integration.isActive }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        fetchIntegrations();
+        showToast("success", integration.isActive ? t.settingsIntegrationDisabled : t.settingsIntegrationEnabled);
+      } else {
+        showToast("error", t.settingsSaveFailed);
+      }
+    } catch {
+      showToast("error", t.genericError);
+    }
   };
 
   const handleDeleteIntegration = async () => {
@@ -287,8 +295,9 @@ export default function SettingsPage() {
     if (res.ok) {
       setDeleteIntegrationId(null);
       fetchIntegrations();
-      setStatus({ type: "success", message: t.settingsDeleted });
-      setTimeout(() => setStatus(null), 3000);
+      showToast("success", t.settingsDeleted);
+    } else {
+      showToast("error", t.settingsSaveFailed);
     }
     setIsLoading(false);
   };
@@ -354,16 +363,31 @@ export default function SettingsPage() {
       if (res.ok) {
         setIsShippingModalOpen(false);
         fetchShippingProvider();
-        setStatus({ type: "success", message: editingShippingProvider
-          ? t.settingsProviderUpdated
-          : t.settingsProviderAdded });
-        setTimeout(() => setStatus(null), 3000);
+        showToast("success", editingShippingProvider ? t.settingsProviderUpdated : t.settingsProviderAdded);
       } else {
         const err = await res.json();
-        setStatus({ type: "error", message: err.error || t.settingsSaveFailed });
+        showToast("error", err.error || t.settingsSaveFailed);
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleShippingProviderStatus = async (provider: any) => {
+    try {
+      const res = await fetch(`/api/settings/shipping-provider/${provider.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isActive: !provider.isActive }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        fetchShippingProvider();
+        showToast("success", provider.isActive ? t.settingsProviderDisabled : t.settingsProviderEnabled);
+      } else {
+        showToast("error", t.settingsSaveFailed);
+      }
+    } catch {
+      showToast("error", t.genericError);
     }
   };
 
@@ -374,8 +398,9 @@ export default function SettingsPage() {
     if (res.ok) {
       setDeleteShippingId(null);
       fetchShippingProvider();
-      setStatus({ type: "success", message: t.settingsDeleted });
-      setTimeout(() => setStatus(null), 3000);
+      showToast("success", t.settingsDeleted);
+    } else {
+      showToast("error", t.settingsSaveFailed);
     }
     setIsLoading(false);
   };
@@ -393,11 +418,11 @@ export default function SettingsPage() {
           });
         }
       }
-      setStatus({ type: "success", message: t.settingsStatesUpdated });
+      showToast("success", t.settingsStatesUpdated);
       setSelectedStates([]);
       fetchShipping();
     } catch (error) {
-      setStatus({ type: "error", message: t.settingsBulkUpdateFailed });
+      showToast("error", t.settingsBulkUpdateFailed);
     } finally {
       setIsLoading(false);
     }
@@ -941,6 +966,13 @@ export default function SettingsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleShippingProviderStatus(provider)}
+                              className={`p-2.5 rounded-xl transition-all ${provider.isActive ? "bg-white text-emerald-600 hover:bg-emerald-50" : "bg-white text-slate-400 hover:bg-slate-100"}`}
+                              title={t.toggleStatus}
+                            >
+                              {provider.isActive ? <Power size={18} /> : <PowerOff size={18} />}
+                            </button>
                             <button
                               onClick={() => handleOpenEditShipping(provider)}
                               className="p-2.5 bg-white rounded-xl text-slate-400 hover:text-slate-900 transition-all"
