@@ -148,8 +148,13 @@ Deploy as a serverless container on Google Cloud Run for auto-scaling and pay-pe
 Create a free PostgreSQL database on **[Neon DB](https://neon.tech/)** (their free tier is excellent):
 
 1. Sign up at [neon.tech](https://neon.tech/)
-2. Create a new project
-3. Copy your connection string (looks like `postgresql://user:password@ep-xxx.region.aws.neon.tech/dbname`)
+2. Create a new project (Neon auto-creates a default database named `neondb`)
+3. **Create a new database** named `zaidi_ecom_dev`:
+   - Go to the **Databases** tab in your Neon project dashboard
+   - Click **Add Database** → name it `zaidi_ecom_dev`
+4. Copy your connection string (looks like `postgresql://user:password@ep-xxx.region.aws.neon.tech/zaidi_ecom_dev`)
+
+> ⚠️ **Don't use the default `neondb` database** — create a dedicated `zaidi_ecom_dev` database for this project to avoid conflicts.
 
 ### Step 2: Fork the Repository
 
